@@ -31,7 +31,6 @@ use mod_saylorcode\local\workspace_context;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class reset_code extends external_api {
-
     /**
      * Parameters.
      *
@@ -40,7 +39,12 @@ class reset_code extends external_api {
     public static function execute_parameters(): external_function_parameters {
         return new external_function_parameters([
             'cmid' => new external_value(PARAM_INT, 'Course module id'),
-            'browsersession' => new external_value(PARAM_ALPHANUMEXT, 'Identifier of the requesting browser session', VALUE_DEFAULT, ''),
+            'browsersession' => new external_value(
+                PARAM_ALPHANUMEXT,
+                'Identifier of the requesting browser session',
+                VALUE_DEFAULT,
+                ''
+            ),
         ]);
     }
 

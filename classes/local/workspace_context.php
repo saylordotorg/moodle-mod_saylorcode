@@ -31,7 +31,6 @@ use stdClass;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 final class workspace_context {
-
     /** @var stdClass The course. */
     public stdClass $course;
 

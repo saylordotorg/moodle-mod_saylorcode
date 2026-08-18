@@ -42,7 +42,6 @@ use stdClass;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class execution_service {
-
     /** @var stdClass The activity instance. */
     protected stdClass $instance;
 

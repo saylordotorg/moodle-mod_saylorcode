@@ -329,7 +329,7 @@ class Workspace {
             if (result.stderr) {
                 parts.push(result.stderr);
             }
-            // textContent, never innerHTML: program output is untrusted and
+            // Assigned as text, never as HTML. Program output is untrusted and
             // must never be parsed as markup.
             this.console.textContent = parts.join('\n');
         }

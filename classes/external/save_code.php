@@ -31,7 +31,6 @@ use mod_saylorcode\local\workspace_context;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class save_code extends external_api {
-
     /**
      * Parameters.
      *
@@ -41,8 +40,18 @@ class save_code extends external_api {
         return new external_function_parameters([
             'cmid' => new external_value(PARAM_INT, 'Course module id'),
             'files' => new external_value(PARAM_RAW, 'JSON object of relative path to file contents'),
-            'browsersession' => new external_value(PARAM_ALPHANUMEXT, 'Identifier of the writing browser session', VALUE_DEFAULT, ''),
-            'knownsnapshotid' => new external_value(PARAM_INT, 'Snapshot the client believes is current', VALUE_DEFAULT, 0),
+            'browsersession' => new external_value(
+                PARAM_ALPHANUMEXT,
+                'Identifier of the writing browser session',
+                VALUE_DEFAULT,
+                ''
+            ),
+            'knownsnapshotid' => new external_value(
+                PARAM_INT,
+                'Snapshot the client believes is current',
+                VALUE_DEFAULT,
+                0
+            ),
         ]);
     }
 

@@ -32,7 +32,6 @@ use stdClass;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class attempt_manager {
-
     /** @var string An automatic save while the student types. */
     public const SNAPSHOT_AUTOSAVE = 'autosave';
 

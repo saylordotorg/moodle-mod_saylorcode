@@ -32,7 +32,6 @@ use stdClass;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class code_executed extends base {
-
     /**
      * Set the basic event properties.
      */

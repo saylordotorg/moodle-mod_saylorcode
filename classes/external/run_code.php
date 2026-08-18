@@ -34,7 +34,6 @@ use mod_saylorcode\local\workspace_context;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class run_code extends external_api {
-
     /**
      * Parameters.
      *
@@ -46,7 +45,12 @@ class run_code extends external_api {
             'mode' => new external_value(PARAM_ALPHA, 'One of run, check or submit'),
             'files' => new external_value(PARAM_RAW, 'JSON object of relative path to file contents'),
             'stdin' => new external_value(PARAM_RAW, 'Standard input for a plain run', VALUE_DEFAULT, ''),
-            'browsersession' => new external_value(PARAM_ALPHANUMEXT, 'Identifier of the writing browser session', VALUE_DEFAULT, ''),
+            'browsersession' => new external_value(
+                PARAM_ALPHANUMEXT,
+                'Identifier of the writing browser session',
+                VALUE_DEFAULT,
+                ''
+            ),
         ]);
     }
 

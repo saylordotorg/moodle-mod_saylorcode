@@ -69,6 +69,7 @@ class code_reset extends base {
      * @return string
      */
     public function get_description(): string {
-        return "The user with id '{$this->userid}' performed a '" . self::class . "' action on the attempt with id '{$this->objectid}'.";
+        return "The user with id '{$this->userid}' acted on the Saylor Code Studio attempt " .
+            "with id '{$this->objectid}'.";
     }
 }
