@@ -91,9 +91,14 @@ class attempt_manager {
             'timestarted' => $now,
             'timemodified' => $now,
         ];
-        $attempt->id = $DB->insert_record('saylorcode_attempts', $attempt);
+        $id = $DB->insert_record('saylorcode_attempts', $attempt);
 
-        return $attempt;
+        // Read the row back rather than returning the object that was inserted.
+        // That object carries only the fields set above, so a caller acting on
+        // a brand new attempt would find score and the other defaulted columns
+        // missing. It also keeps column types consistent with the read path,
+        // which returns ids as strings on some drivers.
+        return $DB->get_record('saylorcode_attempts', ['id' => $id], '*', MUST_EXIST);
     }
 
     /**
@@ -282,7 +287,8 @@ class attempt_manager {
         $now = time();
 
         // Keep the best score across submissions, which is the default policy.
-        $best = $attempt->score === null ? $fraction : max((float) $attempt->score, $fraction);
+        $previous = $attempt->score ?? null;
+        $best = $previous === null ? $fraction : max((float) $previous, $fraction);
 
         $DB->update_record('saylorcode_attempts', (object) [
             'id' => $attempt->id,

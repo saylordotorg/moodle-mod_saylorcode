@@ -185,6 +185,41 @@ final class execution_service_test extends \advanced_testcase {
     }
 
     /**
+     * Submitting as the very first action must work.
+     *
+     * Regression test. get_or_create_attempt() used to return the object it had
+     * just inserted, which carried only the fields set on it, so a student whose
+     * first action was Submit hit an undefined score property. Running or
+     * checking first hid the bug, because those paths re-read the full row.
+     */
+    public function test_submit_as_the_very_first_action(): void {
+        $this->resetAfterTest();
+
+        $course = $this->getDataGenerator()->create_course();
+        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $instance = $this->getDataGenerator()->create_module('saylorcode', [
+            'course' => $course->id,
+            'testcases' => self::CASES,
+        ]);
+        $cm = get_coursemodule_from_instance('saylorcode', $instance->id);
+
+        $manager = new attempt_manager($instance);
+        $attempt = $manager->get_or_create_attempt((int) $student->id);
+
+        // The freshly created attempt must be a complete record.
+        $this->assertObjectHasProperty('score', $attempt);
+        $this->assertNull($attempt->score);
+
+        $provider = new scripted_provider(["4\n" => "8\n", "0\n" => "0\n", "-7\n" => "-14\n"]);
+        $service = new execution_service($instance, $cm, $provider);
+
+        $result = $service->execute($attempt, ['Main.java' => 'x'], execution_request::MODE_SUBMIT);
+
+        $this->assertEqualsWithDelta(100.0, $result['score'], 0.01);
+        $this->assertEqualsWithDelta(1.0, (float) $this->get_attempt($instance->id, $student->id)->score, 0.01);
+    }
+
+    /**
      * Output comparison ignores trailing whitespace, which is not the lesson.
      */
     public function test_trailing_whitespace_does_not_fail_a_student(): void {
