@@ -1,0 +1,144 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template mod_saylorcode/activity_shell
+
+    The three pane coding workspace: instructions, editor and results.
+
+    The panes are landmark regions with headings so a screen reader user can
+    move between them directly, and the status line is a live region so that
+    save and execution state changes are announced without moving focus.
+
+    Classes required for JS:
+    * saylorcode-shell
+    * saylorcode-editor
+    * saylorcode-status
+
+    Data attributes required for JS:
+    * data-region="saylorcode-shell"
+    * data-cmid
+    * data-action
+
+    Context variables required for this template:
+    * cmid int The course module id.
+    * instanceid int The activity instance id.
+    * activitymode string One of guided, challenge, project or playground.
+    * stableid string The referenced exercise stable id, may be empty.
+    * profileid string The runtime profile id.
+    * canattempt bool Whether the viewer may edit and run code.
+    * allowhints bool Whether hints are offered.
+    * allowdownload bool Whether the download control is offered.
+    * nopermission string|null Message shown when the viewer may not attempt.
+
+    Example context (json):
+    {
+        "cmid": 42,
+        "instanceid": 7,
+        "activitymode": "challenge",
+        "stableid": "CS101-U05-E03",
+        "profileid": "java17-console",
+        "canattempt": true,
+        "allowhints": true,
+        "allowdownload": true,
+        "nopermission": null
+    }
+}}
+<div class="saylorcode-shell"
+     data-region="saylorcode-shell"
+     data-cmid="{{cmid}}"
+     data-instanceid="{{instanceid}}"
+     data-mode="{{activitymode}}"
+     data-profileid="{{profileid}}">
+
+    {{#nopermission}}
+        <div class="alert alert-info" role="status">{{.}}</div>
+    {{/nopermission}}
+
+    {{#canattempt}}
+    <div class="saylorcode-panes">
+
+        <section class="saylorcode-pane saylorcode-pane-instructions"
+                 aria-labelledby="saylorcode-instructions-heading-{{cmid}}">
+            <h3 id="saylorcode-instructions-heading-{{cmid}}">{{#str}}instructions, mod_saylorcode{{/str}}</h3>
+            <div data-region="instructions">
+                {{! Instruction content is injected once the exercise is resolved. }}
+            </div>
+        </section>
+
+        <section class="saylorcode-pane saylorcode-pane-editor"
+                 aria-labelledby="saylorcode-editor-heading-{{cmid}}">
+            <h3 id="saylorcode-editor-heading-{{cmid}}">{{#str}}pluginname, mod_saylorcode{{/str}}</h3>
+
+            <label for="saylorcode-editor-{{cmid}}" class="sr-only">
+                {{#str}}pluginname, mod_saylorcode{{/str}}
+            </label>
+            <textarea id="saylorcode-editor-{{cmid}}"
+                      class="saylorcode-editor"
+                      data-region="editor"
+                      rows="18"
+                      spellcheck="false"
+                      autocomplete="off"
+                      autocapitalize="off"
+                      wrap="off"></textarea>
+
+            <div class="saylorcode-actions" role="group"
+                 aria-label="{{#str}}pluginname, mod_saylorcode{{/str}}">
+                <button type="button" class="btn btn-primary" data-action="run">
+                    {{#str}}run, mod_saylorcode{{/str}}
+                </button>
+                <button type="button" class="btn btn-secondary" data-action="check">
+                    {{#str}}check, mod_saylorcode{{/str}}
+                </button>
+                <button type="button" class="btn btn-secondary" data-action="submit">
+                    {{#str}}submit, mod_saylorcode{{/str}}
+                </button>
+                <button type="button" class="btn btn-link" data-action="reset">
+                    {{#str}}reset, mod_saylorcode{{/str}}
+                </button>
+                {{#allowdownload}}
+                <button type="button" class="btn btn-link" data-action="download">
+                    {{#str}}download{{/str}}
+                </button>
+                {{/allowdownload}}
+            </div>
+
+            {{! Save and execution state is announced rather than only shown. }}
+            <p class="saylorcode-status" data-region="status" role="status" aria-live="polite"></p>
+        </section>
+
+        <section class="saylorcode-pane saylorcode-pane-results"
+                 aria-labelledby="saylorcode-results-heading-{{cmid}}">
+            <h3 id="saylorcode-results-heading-{{cmid}}">{{#str}}console, mod_saylorcode{{/str}}</h3>
+            <pre class="saylorcode-console" data-region="console" tabindex="0"></pre>
+
+            <h3>{{#str}}tests, mod_saylorcode{{/str}}</h3>
+            <div data-region="tests"></div>
+
+            {{#allowhints}}
+            <h3>{{#str}}feedback, mod_saylorcode{{/str}}</h3>
+            <div data-region="feedback"></div>
+            {{/allowhints}}
+        </section>
+
+    </div>
+    {{/canattempt}}
+</div>
+{{#js}}
+require(['mod_saylorcode/workspace'], function(Workspace) {
+    Workspace.init({{cmid}});
+});
+{{/js}}
