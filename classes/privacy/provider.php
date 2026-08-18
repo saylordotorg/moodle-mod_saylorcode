@@ -41,7 +41,7 @@ use core_privacy\local\request\writer;
  * @copyright  2026 Saylor Academy
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class provider implements metadata_provider, plugin_provider, core_userlist_provider {
+class provider implements core_userlist_provider, metadata_provider, plugin_provider {
     /**
      * Describe the data this plugin stores.
      *

@@ -22,8 +22,6 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Restore the structure written by the backup step.
  *
@@ -141,8 +139,8 @@ class restore_saylorcode_activity_structure_step extends restore_activity_struct
         $data->timefirstpassed = $this->apply_date_offset($data->timefirstpassed);
         $data->timecompleted = $this->apply_date_offset($data->timecompleted);
 
-        // latestsnapshotid is resolved after snapshots are restored, because a
-        // snapshot row may not exist yet at this point.
+        // The latest snapshot pointer is resolved after snapshots are restored,
+        // because the snapshot row may not exist yet at this point.
         $data->latestsnapshotid = null;
 
         $DB->insert_record('saylorcode_stepattempts', $data);

@@ -189,6 +189,7 @@ class Workspace {
         return Promise.resolve().then(() => {
             this.lastSavedValue = this.editor.value;
             this.setState(SAVE_STATE.SAVED);
+            return true;
         }).catch((error) => {
             this.setState(SAVE_STATE.FAILED);
             throw error;
