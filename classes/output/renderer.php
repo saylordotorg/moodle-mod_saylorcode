@@ -66,6 +66,8 @@ class renderer extends plugin_renderer_base {
             ->get_profile($moduleinstance->profileid);
         $runtimename = $profile ? $profile->get_display_name() : $moduleinstance->profileid;
 
+        $layout = $moduleinstance->layout ?? 'split';
+
         $data = [
             'cmid' => $cm->id,
             'instanceid' => $moduleinstance->id,
@@ -76,6 +78,10 @@ class renderer extends plugin_renderer_base {
             'entryfilename' => $entryfilename,
             'initialcode' => $initialcode,
             'hastests' => trim((string) ($moduleinstance->testcases ?? '')) !== '',
+            'layout' => $layout,
+            'isdrawer' => $layout === 'drawer',
+            'istabs' => $layout === 'tabs',
+            'expected' => $this->expected_lines($moduleinstance),
             // A playground is deliberately ungraded, so it has nothing to
             // submit. Every other mode records an official attempt, which
             // drives completion and grading whether or not tests exist.
@@ -87,5 +93,35 @@ class renderer extends plugin_renderer_base {
         ];
 
         return $this->render_from_template('mod_saylorcode/activity_shell', $data);
+    }
+    /**
+     * The expected output shown on the feedback tab.
+     *
+     * Taken from the first public test case, because that is the one the tab is
+     * inviting the student to compare their own output against. A hidden case
+     * is never used here, since its expected value must not be disclosed.
+     *
+     * @param stdClass $moduleinstance The activity instance.
+     * @return array Lines, each as an array with a line key.
+     */
+    protected function expected_lines(stdClass $moduleinstance): array {
+        $cases = json_decode((string) ($moduleinstance->testcases ?? ''), true);
+        if (!is_array($cases)) {
+            return [];
+        }
+
+        foreach ($cases as $case) {
+            if (empty($case['ispublic']) || !isset($case['expected'])) {
+                continue;
+            }
+
+            $lines = preg_split('~\R~', rtrim((string) $case['expected'], "\n"));
+
+            return array_map(static function (string $line): array {
+                return ['line' => $line];
+            }, $lines ?: []);
+        }
+
+        return [];
     }
 }

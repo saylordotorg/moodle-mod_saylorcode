@@ -17,19 +17,22 @@
 {{!
     @template mod_saylorcode/activity_shell
 
-    The coding workspace: a file bar, an editor with standard input and the
-    student actions, and a results pane.
+    The coding workspace, in one of three layouts.
 
-    The pane headings are screen reader only. They exist so that a screen
-    reader user can move between the editor and the results directly, but they
-    are not drawn, because a visible "Instructions" or "Results" heading inside
-    a Book chapter reads as part of the chapter rather than part of the tool.
-    The instructions are the surrounding page, or the activity introduction,
-    which is rendered separately.
+    * split   Console sits beside the code and is always visible. The default,
+              and the best fit for a wide lesson page.
+    * drawer  Console slides in below the code only after a run. Smallest
+              footprint, for a dense reading.
+    * tabs    Output, input and feedback share a tab strip. Most guidance, for
+              an exercise where the student compares against expected output.
 
-    Results sections start hidden and are revealed by the workspace module when
-    they have something to show, so an untouched workspace does not display a
-    row of empty headings.
+    All three share the same header, editor, regions and action row, so the
+    workspace module drives them without knowing which one it is in. The layout
+    only decides where the results go.
+
+    The pane headings are screen reader only. They let a screen reader user move
+    between the editor and the results directly, but a visible heading inside a
+    Book chapter reads as part of the chapter rather than part of the tool.
 
     Classes required for JS:
     * saylorcode-shell
@@ -38,11 +41,16 @@
     Data attributes required for JS:
     * data-region="saylorcode-shell"
     * data-cmid
+    * data-layout
     * data-action
+    * data-tab
 
     Context variables required for this template:
     * cmid int The course module id.
     * instanceid int The activity instance id.
+    * layout string split, drawer or tabs.
+    * isdrawer bool Whether the drawer layout is in use.
+    * istabs bool Whether the tabs layout is in use.
     * activitymode string One of guided, challenge, project or playground.
     * stableid string The referenced exercise stable id, may be empty.
     * profileid string The runtime profile id.
@@ -51,8 +59,8 @@
     * initialcode string The student's current code, rendered server side.
     * hastests bool Whether the activity defines any test cases.
     * cansubmit bool Whether the activity accepts an official submission.
+    * expected array Expected output lines for the feedback tab.
     * canattempt bool Whether the viewer may edit and run code.
-    * allowhints bool Whether hints are offered.
     * allowdownload bool Whether the download control is offered.
     * nopermission string|null Message shown when the viewer may not attempt.
 
@@ -60,16 +68,19 @@
     {
         "cmid": 42,
         "instanceid": 7,
+        "layout": "split",
+        "isdrawer": false,
+        "istabs": false,
         "activitymode": "challenge",
         "stableid": "CS101-U05-E03",
         "profileid": "java17-console",
-        "runtimename": "Java 17 (console)",
+        "runtimename": "Java 17",
         "entryfilename": "Main.java",
         "initialcode": "public class Main {}",
         "hastests": true,
         "cansubmit": true,
+        "expected": [{"line": "Hello, World!"}, {"line": "How are you?"}],
         "canattempt": true,
-        "allowhints": true,
         "allowdownload": true,
         "nopermission": null
     }
@@ -79,34 +90,65 @@
 {{/nopermission}}
 
 {{#canattempt}}
-<div class="saylorcode-shell"
+<div class="saylorcode-shell saylorcode-layout-{{layout}}"
      data-region="saylorcode-shell"
      data-cmid="{{cmid}}"
      data-instanceid="{{instanceid}}"
+     data-layout="{{layout}}"
      data-mode="{{activitymode}}"
      data-entryfilename="{{entryfilename}}"
      data-profileid="{{profileid}}">
 
+    {{! Header: which file, which language, and how it is going. }}
     <div class="saylorcode-filebar">
-        <span class="saylorcode-filename">{{entryfilename}}</span>
-        <span class="saylorcode-runtime">{{runtimename}}</span>
+        <span class="saylorcode-filename">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                 aria-hidden="true" focusable="false">
+                <polyline points="16 18 22 12 16 6"></polyline>
+                <polyline points="8 6 2 12 8 18"></polyline>
+            </svg>
+            {{entryfilename}}
+        </span>
+        <span class="saylorcode-runtime-tag">{{runtimename}}</span>
+
+        <button type="button" class="saylorcode-iconbtn saylorcode-theme-toggle" data-action="theme"
+                title="{{#str}}toggleeditortheme, mod_saylorcode{{/str}}"
+                aria-label="{{#str}}toggleeditortheme, mod_saylorcode{{/str}}"
+                aria-pressed="false">
+            <svg class="saylorcode-icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                 aria-hidden="true" focusable="false">
+                <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+            </svg>
+            <svg class="saylorcode-icon-sun" width="15" height="15" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                 aria-hidden="true" focusable="false">
+                <circle cx="12" cy="12" r="4"></circle>
+                <path d="M12 2v2"></path><path d="M12 20v2"></path>
+                <path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path>
+                <path d="M2 12h2"></path><path d="M20 12h2"></path>
+                <path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path>
+            </svg>
+        </button>
+
+        <span class="saylorcode-pill" data-region="status">{{#str}}statusready, mod_saylorcode{{/str}}</span>
+        <span class="saylorcode-save" data-region="save">{{#str}}saved, mod_saylorcode{{/str}}</span>
     </div>
 
-    <div class="saylorcode-panes">
+    <div class="saylorcode-body">
 
-        <section class="saylorcode-pane saylorcode-pane-editor"
-                 aria-labelledby="saylorcode-editor-heading-{{cmid}}">
+        <section class="saylorcode-pane-editor" aria-labelledby="saylorcode-editor-heading-{{cmid}}">
             <h3 id="saylorcode-editor-heading-{{cmid}}" class="sr-only">
                 {{#str}}editorheading, mod_saylorcode{{/str}}
             </h3>
-
             <label for="saylorcode-editor-{{cmid}}" class="sr-only">
                 {{#str}}editorlabel, mod_saylorcode, {{entryfilename}}{{/str}}
             </label>
             <textarea id="saylorcode-editor-{{cmid}}"
                       class="saylorcode-editor"
                       data-region="editor"
-                      rows="18"
+                      rows="14"
                       spellcheck="false"
                       autocomplete="off"
                       autocapitalize="off"
@@ -114,9 +156,83 @@
                       data-gramm="false"
                       data-gramm_editor="false"
                       data-enable-grammarly="false">{{initialcode}}</textarea>
+        </section>
 
-            <div class="saylorcode-stdin-wrap">
-                <label for="saylorcode-stdin-{{cmid}}">{{#str}}stdin, mod_saylorcode{{/str}}</label>
+        {{! Results. The same markup in every layout; the stylesheet and the tab
+            strip decide how it is presented. }}
+        <section class="saylorcode-pane-results" data-region="results"
+                 aria-labelledby="saylorcode-results-heading-{{cmid}}">
+            <h3 id="saylorcode-results-heading-{{cmid}}" class="sr-only">
+                {{#str}}resultsheading, mod_saylorcode{{/str}}
+            </h3>
+
+            {{#istabs}}
+            <div class="saylorcode-tabs" role="tablist"
+                 aria-label="{{#str}}resultsheading, mod_saylorcode{{/str}}">
+                <button type="button" class="saylorcode-tab" role="tab" data-tab="output"
+                        id="saylorcode-tab-output-{{cmid}}"
+                        aria-controls="saylorcode-panel-output-{{cmid}}" aria-selected="true">
+                    {{#str}}taboutput, mod_saylorcode{{/str}}
+                </button>
+                <button type="button" class="saylorcode-tab" role="tab" data-tab="input"
+                        id="saylorcode-tab-input-{{cmid}}"
+                        aria-controls="saylorcode-panel-input-{{cmid}}" aria-selected="false" tabindex="-1">
+                    {{#str}}tabinput, mod_saylorcode{{/str}}
+                </button>
+                {{#hastests}}
+                <button type="button" class="saylorcode-tab" role="tab" data-tab="feedback"
+                        id="saylorcode-tab-feedback-{{cmid}}"
+                        aria-controls="saylorcode-panel-feedback-{{cmid}}" aria-selected="false" tabindex="-1">
+                    {{#str}}tabfeedback, mod_saylorcode{{/str}}
+                </button>
+                {{/hastests}}
+                <span class="saylorcode-tabs-meta">
+                    <span class="saylorcode-ran" data-region="ran"></span>
+                </span>
+            </div>
+            {{/istabs}}
+
+            <div class="saylorcode-panel saylorcode-panel-output" data-panel="output"
+                 {{#istabs}}role="tabpanel" id="saylorcode-panel-output-{{cmid}}"
+                 aria-labelledby="saylorcode-tab-output-{{cmid}}"{{/istabs}}>
+                <div class="saylorcode-console-bar">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                         aria-hidden="true" focusable="false">
+                        <polyline points="4 17 10 11 4 5"></polyline>
+                        <line x1="12" y1="19" x2="20" y2="19"></line>
+                    </svg>
+                    <span class="saylorcode-console-label">{{#str}}console, mod_saylorcode{{/str}}</span>
+                    {{^istabs}}<span class="saylorcode-ran" data-region="ran"></span>{{/istabs}}
+                    {{#isdrawer}}
+                    <button type="button" class="saylorcode-iconbtn saylorcode-drawer-close"
+                            data-action="closedrawer"
+                            title="{{#str}}hideconsole, mod_saylorcode{{/str}}"
+                            aria-label="{{#str}}hideconsole, mod_saylorcode{{/str}}">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                             stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                             aria-hidden="true" focusable="false">
+                            <polyline points="18 15 12 9 6 15"></polyline>
+                        </svg>
+                    </button>
+                    {{/isdrawer}}
+                </div>
+                <div class="saylorcode-console" data-region="console" tabindex="0"
+                     role="log" aria-live="polite">
+                    <p class="saylorcode-console-idle" data-region="idle">
+                        {{#str}}consoleempty, mod_saylorcode{{/str}}
+                    </p>
+                </div>
+                <div class="saylorcode-tests" data-region="tests"></div>
+                <p class="saylorcode-verdict" data-region="verdict" hidden></p>
+            </div>
+
+            <div class="saylorcode-panel saylorcode-panel-input" data-panel="input"
+                 {{#istabs}}role="tabpanel" id="saylorcode-panel-input-{{cmid}}"
+                 aria-labelledby="saylorcode-tab-input-{{cmid}}" hidden{{/istabs}}>
+                <label for="saylorcode-stdin-{{cmid}}" class="saylorcode-stdin-label">
+                    {{#str}}stdin, mod_saylorcode{{/str}}
+                </label>
                 <textarea id="saylorcode-stdin-{{cmid}}"
                           class="saylorcode-stdin"
                           data-region="stdin"
@@ -124,69 +240,76 @@
                           spellcheck="false"
                           autocomplete="off"
                           data-gramm="false"
-                          data-gramm_editor="false"
-                          data-enable-grammarly="false"></textarea>
+                          placeholder="{{#str}}stdinplaceholder, mod_saylorcode{{/str}}"></textarea>
             </div>
 
-            <div class="saylorcode-actions" role="group"
-                 aria-label="{{#str}}actionsheading, mod_saylorcode{{/str}}">
-                <button type="button" class="btn btn-primary btn-sm" data-action="run">
-                    {{#str}}run, mod_saylorcode{{/str}}
-                </button>
-                {{! Check evaluates test cases, so it only makes sense when the
-                    activity defines some. Submit records an official attempt
-                    and drives completion and grading, which matters whether or
-                    not there are tests, so it is gated on the activity
-                    accepting submissions at all rather than on hastests. }}
-                {{#hastests}}
-                <button type="button" class="btn btn-secondary btn-sm" data-action="check">
-                    {{#str}}check, mod_saylorcode{{/str}}
-                </button>
-                {{/hastests}}
-                {{#cansubmit}}
-                <button type="button" class="btn btn-secondary btn-sm" data-action="submit">
-                    {{#str}}submit, mod_saylorcode{{/str}}
-                </button>
-                {{/cansubmit}}
-                <button type="button" class="btn btn-link btn-sm" data-action="reset">
-                    {{#str}}reset, mod_saylorcode{{/str}}
-                </button>
-                {{#allowdownload}}
-                <button type="button" class="btn btn-link btn-sm" data-action="download">
-                    {{#str}}download{{/str}}
-                </button>
-                {{/allowdownload}}
-
-                {{! Save and execution state is announced, not only shown. }}
-                <p class="saylorcode-status" data-region="status" role="status" aria-live="polite"></p>
+            {{#istabs}}
+            {{#hastests}}
+            <div class="saylorcode-panel saylorcode-panel-feedback" data-panel="feedback"
+                 role="tabpanel" id="saylorcode-panel-feedback-{{cmid}}"
+                 aria-labelledby="saylorcode-tab-feedback-{{cmid}}" hidden>
+                <div class="saylorcode-feedback-grid">
+                    <div>
+                        <p class="saylorcode-minihead">{{#str}}expectedoutput, mod_saylorcode{{/str}}</p>
+                        <div class="saylorcode-expected">
+                            {{#expected}}<div>{{line}}</div>{{/expected}}
+                        </div>
+                    </div>
+                    <div>
+                        <p class="saylorcode-minihead">{{#str}}yourprogress, mod_saylorcode{{/str}}</p>
+                        <p class="saylorcode-attempts" data-region="attempts">
+                            {{#str}}noattempts, mod_saylorcode{{/str}}
+                        </p>
+                        <p class="saylorcode-feedback-verdict" data-region="verdict-surface">
+                            {{#str}}noverdict, mod_saylorcode{{/str}}
+                        </p>
+                    </div>
+                </div>
             </div>
+            {{/hastests}}
+            {{/istabs}}
         </section>
+    </div>
 
-        <section class="saylorcode-pane saylorcode-pane-results"
-                 aria-labelledby="saylorcode-results-heading-{{cmid}}">
-            <h3 id="saylorcode-results-heading-{{cmid}}" class="sr-only">
-                {{#str}}resultsheading, mod_saylorcode{{/str}}
-            </h3>
+    <div class="saylorcode-actions" role="group"
+         aria-label="{{#str}}actionsheading, mod_saylorcode{{/str}}">
+        <button type="button" class="saylorcode-btn saylorcode-btn-primary" data-action="run">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none"
+                 aria-hidden="true" focusable="false">
+                <polygon points="6 3 20 12 6 21 6 3"></polygon>
+            </svg>
+            {{#str}}run, mod_saylorcode{{/str}}
+        </button>
+        {{#hastests}}
+        <button type="button" class="saylorcode-btn saylorcode-btn-secondary" data-action="check">
+            {{#str}}check, mod_saylorcode{{/str}}
+        </button>
+        {{/hastests}}
+        {{#cansubmit}}
+        <button type="button" class="saylorcode-btn saylorcode-btn-secondary" data-action="submit">
+            {{#str}}submit, mod_saylorcode{{/str}}
+        </button>
+        {{/cansubmit}}
 
-            <div class="saylorcode-results-section">
-                <h4 class="saylorcode-results-heading">{{#str}}console, mod_saylorcode{{/str}}</h4>
-                <pre class="saylorcode-console"
-                     data-region="console"
-                     data-placeholder="{{#str}}consoleempty, mod_saylorcode{{/str}}"
-                     tabindex="0"></pre>
-            </div>
+        <span class="saylorcode-actions-divider" aria-hidden="true"></span>
 
-            <div class="saylorcode-results-section" data-region="tests-section" hidden>
-                <h4 class="saylorcode-results-heading">{{#str}}tests, mod_saylorcode{{/str}}</h4>
-                <div data-region="tests"></div>
-            </div>
+        <button type="button" class="saylorcode-btn saylorcode-btn-ghost" data-action="reset">
+            {{#str}}reset, mod_saylorcode{{/str}}
+        </button>
+        {{#allowdownload}}
+        <button type="button" class="saylorcode-btn saylorcode-btn-ghost" data-action="download">
+            {{#str}}download{{/str}}
+        </button>
+        {{/allowdownload}}
 
-            <div class="saylorcode-results-section" data-region="feedback-section" hidden>
-                <h4 class="saylorcode-results-heading">{{#str}}feedback, mod_saylorcode{{/str}}</h4>
-                <div data-region="feedback"></div>
-            </div>
-        </section>
-
+        <span class="saylorcode-actions-meta">
+            {{#hastests}}
+            <span class="saylorcode-attempts" data-region="attempts-inline">
+                {{#str}}noattempts, mod_saylorcode{{/str}}
+            </span>
+            {{/hastests}}
+            <kbd class="saylorcode-kbd">{{#str}}runshortcut, mod_saylorcode{{/str}}</kbd>
+        </span>
     </div>
 </div>
 {{/canattempt}}
