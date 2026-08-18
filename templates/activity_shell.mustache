@@ -39,6 +39,9 @@
     * activitymode string One of guided, challenge, project or playground.
     * stableid string The referenced exercise stable id, may be empty.
     * profileid string The runtime profile id.
+    * entryfilename string The file the student edits.
+    * initialcode string The student's current code, rendered server side.
+    * hastests bool Whether the activity defines any test cases.
     * canattempt bool Whether the viewer may edit and run code.
     * allowhints bool Whether hints are offered.
     * allowdownload bool Whether the download control is offered.
@@ -51,6 +54,9 @@
         "activitymode": "challenge",
         "stableid": "CS101-U05-E03",
         "profileid": "java17-console",
+        "entryfilename": "Main.java",
+        "initialcode": "public class Main {}",
+        "hastests": true,
         "canattempt": true,
         "allowhints": true,
         "allowdownload": true,
@@ -62,6 +68,7 @@
      data-cmid="{{cmid}}"
      data-instanceid="{{instanceid}}"
      data-mode="{{activitymode}}"
+     data-entryfilename="{{entryfilename}}"
      data-profileid="{{profileid}}">
 
     {{#nopermission}}
@@ -92,7 +99,15 @@
                       rows="18"
                       spellcheck="false"
                       autocomplete="off"
-                      autocapitalize="off"></textarea>
+                      autocapitalize="off">{{initialcode}}</textarea>
+
+            <label for="saylorcode-stdin-{{cmid}}">{{#str}}stdin, mod_saylorcode{{/str}}</label>
+            <textarea id="saylorcode-stdin-{{cmid}}"
+                      class="saylorcode-stdin"
+                      data-region="stdin"
+                      rows="2"
+                      spellcheck="false"
+                      autocomplete="off"></textarea>
 
             <div class="saylorcode-actions" role="group"
                  aria-label="{{#str}}pluginname, mod_saylorcode{{/str}}">

@@ -84,6 +84,33 @@ class mod_saylorcode_mod_form extends moodleform_mod {
         $mform->addElement('select', 'profileid', get_string('profileid', 'mod_saylorcode'), $profiles);
         $mform->addHelpButton('profileid', 'profileid', 'mod_saylorcode');
 
+        $mform->addElement('text', 'entryfilename', get_string('entryfilename', 'mod_saylorcode'), ['size' => '40']);
+        $mform->setType('entryfilename', PARAM_FILE);
+        $mform->addHelpButton('entryfilename', 'entryfilename', 'mod_saylorcode');
+        $mform->setDefault('entryfilename', 'Main.java');
+
+        // Starter code and test cases live on the activity until the central
+        // library can supply them. Keeping them here means CS101 is not blocked
+        // on the library landing.
+        $mform->addElement(
+            'textarea',
+            'startercode',
+            get_string('startercode', 'mod_saylorcode'),
+            ['rows' => 12, 'cols' => 80, 'spellcheck' => 'false', 'class' => 'saylorcode-codearea']
+        );
+        $mform->setType('startercode', PARAM_RAW);
+        $mform->addHelpButton('startercode', 'startercode', 'mod_saylorcode');
+
+        $mform->addElement(
+            'textarea',
+            'testcases',
+            get_string('testcases', 'mod_saylorcode'),
+            ['rows' => 10, 'cols' => 80, 'spellcheck' => 'false', 'class' => 'saylorcode-codearea']
+        );
+        $mform->setType('testcases', PARAM_RAW);
+        $mform->addHelpButton('testcases', 'testcases', 'mod_saylorcode');
+        $mform->hideIf('testcases', 'activitymode', 'eq', 'playground');
+
         // Student experience.
         $mform->addElement('header', 'experienceheader', get_string('feedback', 'mod_saylorcode'));
 
@@ -183,6 +210,23 @@ class mod_saylorcode_mod_form extends moodleform_mod {
         $minscore = (int) ($data['completionminscore'] ?? 0);
         if ($minscore < 0 || $minscore > 100) {
             $errors['completionminscore'] = get_string('completionminscore', 'mod_saylorcode');
+        }
+
+        // Malformed test cases would otherwise fail silently at Check time,
+        // long after the author has moved on, so they are rejected here.
+        $testcases = trim((string) ($data['testcases'] ?? ''));
+        if ($testcases !== '') {
+            $decoded = json_decode($testcases, true);
+            if (!is_array($decoded)) {
+                $errors['testcases'] = get_string('testcasesinvalid', 'mod_saylorcode');
+            } else {
+                foreach ($decoded as $case) {
+                    if (!is_array($case) || !array_key_exists('expected', $case)) {
+                        $errors['testcases'] = get_string('testcasesinvalid', 'mod_saylorcode');
+                        break;
+                    }
+                }
+            }
         }
 
         return $errors;

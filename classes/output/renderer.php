@@ -43,7 +43,22 @@ class renderer extends plugin_renderer_base {
      * @return string HTML.
      */
     public function render_activity(stdClass $moduleinstance, cm_info $cm, context_module $context): string {
+        global $USER;
+
         $canattempt = has_capability('mod/saylorcode:attempt', $context);
+
+        // Seed the editor server side. The student sees their own code in the
+        // initial HTML rather than after a round trip, so a slow connection
+        // shows work-in-progress rather than an empty box.
+        $initialcode = '';
+        $entryfilename = $moduleinstance->entryfilename ?? 'Main.java';
+
+        if ($canattempt) {
+            $manager = new \mod_saylorcode\local\attempt_manager($moduleinstance);
+            $attempt = $manager->get_or_create_attempt((int) $USER->id);
+            $files = $manager->get_current_files($attempt);
+            $initialcode = (string) ($files[$entryfilename] ?? reset($files));
+        }
 
         $data = [
             'cmid' => $cm->id,
@@ -51,6 +66,9 @@ class renderer extends plugin_renderer_base {
             'activitymode' => $moduleinstance->activitymode,
             'stableid' => $moduleinstance->stableid,
             'profileid' => $moduleinstance->profileid,
+            'entryfilename' => $entryfilename,
+            'initialcode' => $initialcode,
+            'hastests' => trim((string) ($moduleinstance->testcases ?? '')) !== '',
             'canattempt' => $canattempt,
             'allowhints' => !empty($moduleinstance->allowhints),
             'allowdownload' => !empty($moduleinstance->allowdownload),

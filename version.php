@@ -25,11 +25,11 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'mod_saylorcode';
-$plugin->version   = 2026081800;
+$plugin->version   = 2026081801;
 $plugin->requires  = 2024100700; // Moodle 4.5.
 $plugin->supported = [405, 405];
 $plugin->maturity  = MATURITY_ALPHA;
 $plugin->release   = '0.1.0 (Phase 1 vertical slice)';
 $plugin->dependencies = [
-    'local_saylorcode' => 2026081800,
+    'local_saylorcode' => 2026081801,
 ];
