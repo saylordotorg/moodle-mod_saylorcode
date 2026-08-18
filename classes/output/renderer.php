@@ -76,6 +76,10 @@ class renderer extends plugin_renderer_base {
             'entryfilename' => $entryfilename,
             'initialcode' => $initialcode,
             'hastests' => trim((string) ($moduleinstance->testcases ?? '')) !== '',
+            // A playground is deliberately ungraded, so it has nothing to
+            // submit. Every other mode records an official attempt, which
+            // drives completion and grading whether or not tests exist.
+            'cansubmit' => ($moduleinstance->activitymode ?? '') !== 'playground',
             'canattempt' => $canattempt,
             'allowhints' => !empty($moduleinstance->allowhints),
             'allowdownload' => !empty($moduleinstance->allowdownload),

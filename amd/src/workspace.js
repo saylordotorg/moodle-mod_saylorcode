@@ -29,6 +29,7 @@
 import Ajax from 'core/ajax';
 import {get_string as getString} from 'core/str';
 import Notification from 'core/notification';
+import * as Editor from 'mod_saylorcode/editor';
 
 /**
  * How long the editor must be idle before an autosave fires.
@@ -39,6 +40,13 @@ import Notification from 'core/notification';
  * @type {number}
  */
 const AUTOSAVE_IDLE_MS = 2000;
+
+/**
+ * One level of indentation.
+ *
+ * @type {string}
+ */
+const INDENT = '    ';
 
 /** @type {Object} Selectors used by this module. */
 const SELECTORS = {
@@ -89,18 +97,39 @@ class Workspace {
 
         this.saveTimer = null;
         this.state = SAVE_STATE.CLEAN;
-        this.lastSavedValue = this.editor ? this.editor.value : '';
         this.busy = false;
 
+        // The rich editor replaces the textarea as the editing surface, but the
+        // textarea stays authoritative underneath it, so everything below reads
+        // and writes through this one interface.
+        this.code = Editor.create(this.editor, this.editorLabel());
+        this.lastSavedValue = this.code ? this.code.getValue() : '';
+
         this.registerListeners();
+    }
+
+    /**
+     * The accessible name for the editing surface.
+     *
+     * @returns {string} The label text.
+     */
+    editorLabel() {
+        const label = this.root.querySelector(`label[for="${this.editor ? this.editor.id : ''}"]`);
+        return label ? label.textContent.trim() : this.entryFilename;
     }
 
     /**
      * Attach event handlers.
      */
     registerListeners() {
-        if (this.editor) {
-            this.editor.addEventListener('input', () => this.handleInput());
+        if (this.code) {
+            this.code.onChange(() => this.handleInput());
+        }
+
+        // Only the plain textarea needs the hand rolled indent handling. The
+        // rich editor brings its own, and leaves Tab moving focus, which is
+        // the accessible default.
+        if (this.editor && this.code && !this.code.rich) {
             this.editor.addEventListener('keydown', (e) => this.handleKeydown(e));
         }
 
@@ -157,15 +186,78 @@ class Workspace {
 
         e.preventDefault();
 
-        const el = this.editor;
-        const start = el.selectionStart;
-        const end = el.selectionEnd;
-        const indent = '    ';
-
-        el.value = el.value.slice(0, start) + indent + el.value.slice(end);
-        el.selectionStart = el.selectionEnd = start + indent.length;
+        if (this.editor.selectionStart === this.editor.selectionEnd) {
+            this.insertIndent();
+        } else {
+            this.shiftSelectedLines(e.shiftKey);
+        }
 
         this.handleInput();
+    }
+
+    /**
+     * Insert one indent at the cursor.
+     */
+    insertIndent() {
+        const el = this.editor;
+        const at = el.selectionStart;
+
+        el.value = el.value.slice(0, at) + INDENT + el.value.slice(at);
+        el.selectionStart = el.selectionEnd = at + INDENT.length;
+    }
+
+    /**
+     * Indent or outdent every line the selection touches.
+     *
+     * Replacing a selection with a single indent would delete the selected
+     * code, which is the opposite of what a student pressing Tab on a block
+     * expects, so the selection is preserved and each line moved instead.
+     *
+     * @param {boolean} outdent True to remove one level rather than add one.
+     */
+    shiftSelectedLines(outdent) {
+        const el = this.editor;
+        const value = el.value;
+        const start = el.selectionStart;
+        const end = el.selectionEnd;
+
+        // Grow the range to whole lines so partial selections behave sanely.
+        const from = value.lastIndexOf('\n', start - 1) + 1;
+        let to = value.indexOf('\n', end);
+        if (to === -1) {
+            to = value.length;
+        }
+
+        const lines = value.slice(from, to).split('\n');
+        let firstDelta = 0;
+        let totalDelta = 0;
+
+        const shifted = lines.map((line, index) => {
+            let result;
+            if (outdent) {
+                const removed = line.startsWith(INDENT)
+                    ? INDENT.length
+                    : (line.match(/^ {1,3}/) || [''])[0].length;
+                result = line.slice(removed);
+                totalDelta -= removed;
+                if (index === 0) {
+                    firstDelta = -removed;
+                }
+            } else {
+                result = INDENT + line;
+                totalDelta += INDENT.length;
+                if (index === 0) {
+                    firstDelta = INDENT.length;
+                }
+            }
+            return result;
+        });
+
+        el.value = value.slice(0, from) + shifted.join('\n') + value.slice(to);
+
+        // Keep the same block selected so the student can press Tab again.
+        el.selectionStart = Math.max(from, start + firstDelta);
+        el.selectionEnd = Math.max(el.selectionStart, end + totalDelta);
     }
 
     /**
@@ -226,7 +318,7 @@ class Workspace {
      * @returns {Object} Relative path to contents.
      */
     getFiles() {
-        return {[this.entryFilename]: this.editor ? this.editor.value : ''};
+        return {[this.entryFilename]: this.code ? this.code.getValue() : ''};
     }
 
     /**
@@ -235,12 +327,12 @@ class Workspace {
      * @returns {Promise} Resolves when the save is acknowledged.
      */
     save() {
-        if (!this.editor || this.editor.value === this.lastSavedValue) {
+        if (!this.code || this.code.getValue() === this.lastSavedValue) {
             return Promise.resolve(true);
         }
 
         this.setState(SAVE_STATE.SAVING);
-        const pending = this.editor.value;
+        const pending = this.code.getValue();
 
         return Ajax.call([{
             methodname: 'mod_saylorcode_save_code',
@@ -275,7 +367,7 @@ class Workspace {
      * @returns {Promise} Resolves when the result has been rendered.
      */
     execute(mode) {
-        this.busy = true;
+        this.setBusy(true);
         this.announce('running');
 
         return Ajax.call([{
@@ -288,7 +380,7 @@ class Workspace {
                 browsersession: this.browserSession,
             },
         }])[0].then((result) => {
-            this.lastSavedValue = this.editor ? this.editor.value : '';
+            this.lastSavedValue = this.code ? this.code.getValue() : '';
             this.setState(SAVE_STATE.SAVED);
             this.renderResult(result);
             return result;
@@ -296,7 +388,7 @@ class Workspace {
             this.showMessage(error.message || String(error));
             throw error;
         }).finally(() => {
-            this.busy = false;
+            this.setBusy(false);
         });
     }
 
@@ -306,7 +398,7 @@ class Workspace {
      * @returns {Promise} Resolves when the editor has been restored.
      */
     reset() {
-        this.busy = true;
+        this.setBusy(true);
 
         return Ajax.call([{
             methodname: 'mod_saylorcode_reset_code',
@@ -318,15 +410,15 @@ class Workspace {
             const files = JSON.parse(response.files);
             const restored = files[this.entryFilename] ?? '';
 
-            if (this.editor) {
-                this.editor.value = restored;
+            if (this.code) {
+                this.code.setValue(restored);
                 this.lastSavedValue = restored;
             }
             this.setState(SAVE_STATE.SAVED);
             this.showMessage(response.message);
             return response;
         }).finally(() => {
-            this.busy = false;
+            this.setBusy(false);
         });
     }
 
@@ -334,11 +426,11 @@ class Workspace {
      * Offer the current code as a file.
      */
     download() {
-        if (!this.editor) {
+        if (!this.code) {
             return;
         }
 
-        const blob = new Blob([this.editor.value], {type: 'text/plain'});
+        const blob = new Blob([this.code.getValue()], {type: 'text/plain'});
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -421,6 +513,19 @@ class Workspace {
         });
 
         this.tests.appendChild(list);
+    }
+
+    /**
+     * Record that work is in flight, and show it.
+     *
+     * The action row dims while something is running, so the state is visible
+     * as well as announced.
+     *
+     * @param {boolean} busy Whether work is in flight.
+     */
+    setBusy(busy) {
+        this.busy = busy;
+        this.root.classList.toggle('saylorcode-busy', busy);
     }
 
     /**

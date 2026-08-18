@@ -253,3 +253,172 @@
 .saylorcode-embed-linkonly {
     margin: 1rem 0;
 }
+
+/* ---------------------------------------------------------------------------
+ * Rich editor
+ *
+ * CodeMirror provides the editing surface when it is available. The textarea
+ * stays in the DOM underneath it holding the current value, so it is hidden
+ * visually rather than removed.
+ * ------------------------------------------------------------------------ */
+
+.saylorcode-shell .saylorcode-editor-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.saylorcode-shell .saylorcode-cm .cm-editor {
+    background: var(--saylorcode-code-bg);
+    color: var(--saylorcode-code-fg);
+    font-size: 0.875rem;
+    max-height: 30rem;
+}
+
+.saylorcode-shell .saylorcode-cm .cm-editor.cm-focused {
+    outline: 2px solid var(--primary, #0f6cbf);
+    outline-offset: -2px;
+}
+
+.saylorcode-shell .saylorcode-cm .cm-scroller {
+    font-family: var(--font-family-monospace, "SFMono-Regular", Menlo, Consolas, monospace);
+    line-height: 1.55;
+    min-height: 16rem;
+}
+
+.saylorcode-shell .saylorcode-cm .cm-content {
+    padding: 0.6rem 0;
+    caret-color: var(--saylorcode-code-fg);
+}
+
+/* The line number and fold gutter. Quiet enough to read past, present enough
+   to point at a line when explaining an error. */
+.saylorcode-shell .saylorcode-cm .cm-gutters {
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(230, 230, 236, 0.45);
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.saylorcode-shell .saylorcode-cm .cm-lineNumbers .cm-gutterElement {
+    padding: 0 0.5rem 0 0.75rem;
+    min-width: 2.2rem;
+}
+
+.saylorcode-shell .saylorcode-cm .cm-foldGutter .cm-gutterElement {
+    padding: 0 0.3rem;
+    cursor: pointer;
+    opacity: 0.55;
+}
+
+.saylorcode-shell .saylorcode-cm .cm-foldGutter .cm-gutterElement:hover {
+    opacity: 1;
+}
+
+/* A folded range should look like something you can click to reopen. */
+.saylorcode-shell .saylorcode-cm .cm-foldPlaceholder {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 0.2rem;
+    color: var(--saylorcode-code-fg);
+    padding: 0 0.35rem;
+    margin: 0 0.2rem;
+}
+
+.saylorcode-shell .saylorcode-cm .cm-activeLine {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.saylorcode-shell .saylorcode-cm .cm-activeLineGutter {
+    background: rgba(255, 255, 255, 0.07);
+    color: rgba(230, 230, 236, 0.85);
+}
+
+.saylorcode-shell .saylorcode-cm .cm-selectionBackground,
+.saylorcode-shell .saylorcode-cm .cm-content ::selection {
+    background: rgba(120, 170, 255, 0.28);
+}
+
+.saylorcode-shell .saylorcode-cm .cm-cursor {
+    border-left-color: var(--saylorcode-code-fg);
+}
+
+.saylorcode-shell .saylorcode-cm .cm-matchingBracket {
+    background: rgba(255, 255, 255, 0.16);
+    outline: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+/* ---------------------------------------------------------------------------
+ * Actions
+ *
+ * Run is the action a student reaches for most, so it carries the weight.
+ * Check and Submit are deliberately quieter, and Reset and Download quieter
+ * still, so the row reads in order of consequence rather than as five equal
+ * choices.
+ * ------------------------------------------------------------------------ */
+
+.saylorcode-shell .saylorcode-actions {
+    gap: 0.4rem;
+    padding: 0.65rem 0.9rem;
+}
+
+.saylorcode-shell .saylorcode-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 2.3rem;
+    padding: 0.35rem 0.9rem;
+    border-radius: 0.35rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    line-height: 1.2;
+    transition: background-color 0.12s ease, box-shadow 0.12s ease, transform 0.06s ease;
+}
+
+.saylorcode-shell .saylorcode-actions .btn:active {
+    transform: translateY(1px);
+}
+
+.saylorcode-shell .saylorcode-actions .btn:focus-visible {
+    outline: 2px solid var(--primary, #0f6cbf);
+    outline-offset: 2px;
+    box-shadow: none;
+}
+
+.saylorcode-shell .saylorcode-actions [data-action="run"] {
+    padding-left: 1.1rem;
+    padding-right: 1.1rem;
+}
+
+/* A small triangle marks Run without needing an icon font. */
+.saylorcode-shell .saylorcode-actions [data-action="run"]::before {
+    content: "";
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0.32rem 0 0.32rem 0.5rem;
+    border-color: transparent transparent transparent currentColor;
+}
+
+.saylorcode-shell .saylorcode-actions [data-action="reset"],
+.saylorcode-shell .saylorcode-actions [data-action="download"] {
+    font-weight: 500;
+    padding-left: 0.6rem;
+    padding-right: 0.6rem;
+}
+
+/* While something is running the whole row is disabled, so the state is
+   obvious rather than only being announced. */
+.saylorcode-shell.saylorcode-busy .saylorcode-actions .btn {
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+.saylorcode-shell .saylorcode-status {
+    font-weight: 500;
+}

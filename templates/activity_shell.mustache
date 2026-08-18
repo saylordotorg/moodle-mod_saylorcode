@@ -50,6 +50,7 @@
     * entryfilename string The file the student edits.
     * initialcode string The student's current code, rendered server side.
     * hastests bool Whether the activity defines any test cases.
+    * cansubmit bool Whether the activity accepts an official submission.
     * canattempt bool Whether the viewer may edit and run code.
     * allowhints bool Whether hints are offered.
     * allowdownload bool Whether the download control is offered.
@@ -66,6 +67,7 @@
         "entryfilename": "Main.java",
         "initialcode": "public class Main {}",
         "hastests": true,
+        "cansubmit": true,
         "canattempt": true,
         "allowhints": true,
         "allowdownload": true,
@@ -108,7 +110,10 @@
                       spellcheck="false"
                       autocomplete="off"
                       autocapitalize="off"
-                      autocorrect="off">{{initialcode}}</textarea>
+                      autocorrect="off"
+                      data-gramm="false"
+                      data-gramm_editor="false"
+                      data-enable-grammarly="false">{{initialcode}}</textarea>
 
             <div class="saylorcode-stdin-wrap">
                 <label for="saylorcode-stdin-{{cmid}}">{{#str}}stdin, mod_saylorcode{{/str}}</label>
@@ -117,7 +122,10 @@
                           data-region="stdin"
                           rows="2"
                           spellcheck="false"
-                          autocomplete="off"></textarea>
+                          autocomplete="off"
+                          data-gramm="false"
+                          data-gramm_editor="false"
+                          data-enable-grammarly="false"></textarea>
             </div>
 
             <div class="saylorcode-actions" role="group"
@@ -125,14 +133,21 @@
                 <button type="button" class="btn btn-primary btn-sm" data-action="run">
                     {{#str}}run, mod_saylorcode{{/str}}
                 </button>
+                {{! Check evaluates test cases, so it only makes sense when the
+                    activity defines some. Submit records an official attempt
+                    and drives completion and grading, which matters whether or
+                    not there are tests, so it is gated on the activity
+                    accepting submissions at all rather than on hastests. }}
                 {{#hastests}}
                 <button type="button" class="btn btn-secondary btn-sm" data-action="check">
                     {{#str}}check, mod_saylorcode{{/str}}
                 </button>
+                {{/hastests}}
+                {{#cansubmit}}
                 <button type="button" class="btn btn-secondary btn-sm" data-action="submit">
                     {{#str}}submit, mod_saylorcode{{/str}}
                 </button>
-                {{/hastests}}
+                {{/cansubmit}}
                 <button type="button" class="btn btn-link btn-sm" data-action="reset">
                     {{#str}}reset, mod_saylorcode{{/str}}
                 </button>
