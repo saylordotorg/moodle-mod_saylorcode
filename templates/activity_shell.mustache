@@ -17,16 +17,23 @@
 {{!
     @template mod_saylorcode/activity_shell
 
-    The three pane coding workspace: instructions, editor and results.
+    The coding workspace: a file bar, an editor with standard input and the
+    student actions, and a results pane.
 
-    The panes are landmark regions with headings so a screen reader user can
-    move between them directly, and the status line is a live region so that
-    save and execution state changes are announced without moving focus.
+    The pane headings are screen reader only. They exist so that a screen
+    reader user can move between the editor and the results directly, but they
+    are not drawn, because a visible "Instructions" or "Results" heading inside
+    a Book chapter reads as part of the chapter rather than part of the tool.
+    The instructions are the surrounding page, or the activity introduction,
+    which is rendered separately.
+
+    Results sections start hidden and are revealed by the workspace module when
+    they have something to show, so an untouched workspace does not display a
+    row of empty headings.
 
     Classes required for JS:
     * saylorcode-shell
     * saylorcode-editor
-    * saylorcode-status
 
     Data attributes required for JS:
     * data-region="saylorcode-shell"
@@ -39,6 +46,7 @@
     * activitymode string One of guided, challenge, project or playground.
     * stableid string The referenced exercise stable id, may be empty.
     * profileid string The runtime profile id.
+    * runtimename string Student facing language name.
     * entryfilename string The file the student edits.
     * initialcode string The student's current code, rendered server side.
     * hastests bool Whether the activity defines any test cases.
@@ -54,6 +62,7 @@
         "activitymode": "challenge",
         "stableid": "CS101-U05-E03",
         "profileid": "java17-console",
+        "runtimename": "Java 17 (console)",
         "entryfilename": "Main.java",
         "initialcode": "public class Main {}",
         "hastests": true,
@@ -63,6 +72,11 @@
         "nopermission": null
     }
 }}
+{{#nopermission}}
+    <div class="alert alert-info" role="status">{{.}}</div>
+{{/nopermission}}
+
+{{#canattempt}}
 <div class="saylorcode-shell"
      data-region="saylorcode-shell"
      data-cmid="{{cmid}}"
@@ -71,27 +85,21 @@
      data-entryfilename="{{entryfilename}}"
      data-profileid="{{profileid}}">
 
-    {{#nopermission}}
-        <div class="alert alert-info" role="status">{{.}}</div>
-    {{/nopermission}}
+    <div class="saylorcode-filebar">
+        <span class="saylorcode-filename">{{entryfilename}}</span>
+        <span class="saylorcode-runtime">{{runtimename}}</span>
+    </div>
 
-    {{#canattempt}}
     <div class="saylorcode-panes">
-
-        <section class="saylorcode-pane saylorcode-pane-instructions"
-                 aria-labelledby="saylorcode-instructions-heading-{{cmid}}">
-            <h3 id="saylorcode-instructions-heading-{{cmid}}">{{#str}}instructions, mod_saylorcode{{/str}}</h3>
-            <div data-region="instructions">
-                {{! Instruction content is injected once the exercise is resolved. }}
-            </div>
-        </section>
 
         <section class="saylorcode-pane saylorcode-pane-editor"
                  aria-labelledby="saylorcode-editor-heading-{{cmid}}">
-            <h3 id="saylorcode-editor-heading-{{cmid}}">{{#str}}pluginname, mod_saylorcode{{/str}}</h3>
+            <h3 id="saylorcode-editor-heading-{{cmid}}" class="sr-only">
+                {{#str}}editorheading, mod_saylorcode{{/str}}
+            </h3>
 
             <label for="saylorcode-editor-{{cmid}}" class="sr-only">
-                {{#str}}pluginname, mod_saylorcode{{/str}}
+                {{#str}}editorlabel, mod_saylorcode, {{entryfilename}}{{/str}}
             </label>
             <textarea id="saylorcode-editor-{{cmid}}"
                       class="saylorcode-editor"
@@ -99,58 +107,74 @@
                       rows="18"
                       spellcheck="false"
                       autocomplete="off"
-                      autocapitalize="off">{{initialcode}}</textarea>
+                      autocapitalize="off"
+                      autocorrect="off">{{initialcode}}</textarea>
 
-            <label for="saylorcode-stdin-{{cmid}}">{{#str}}stdin, mod_saylorcode{{/str}}</label>
-            <textarea id="saylorcode-stdin-{{cmid}}"
-                      class="saylorcode-stdin"
-                      data-region="stdin"
-                      rows="2"
-                      spellcheck="false"
-                      autocomplete="off"></textarea>
+            <div class="saylorcode-stdin-wrap">
+                <label for="saylorcode-stdin-{{cmid}}">{{#str}}stdin, mod_saylorcode{{/str}}</label>
+                <textarea id="saylorcode-stdin-{{cmid}}"
+                          class="saylorcode-stdin"
+                          data-region="stdin"
+                          rows="2"
+                          spellcheck="false"
+                          autocomplete="off"></textarea>
+            </div>
 
             <div class="saylorcode-actions" role="group"
-                 aria-label="{{#str}}pluginname, mod_saylorcode{{/str}}">
-                <button type="button" class="btn btn-primary" data-action="run">
+                 aria-label="{{#str}}actionsheading, mod_saylorcode{{/str}}">
+                <button type="button" class="btn btn-primary btn-sm" data-action="run">
                     {{#str}}run, mod_saylorcode{{/str}}
                 </button>
-                <button type="button" class="btn btn-secondary" data-action="check">
+                {{#hastests}}
+                <button type="button" class="btn btn-secondary btn-sm" data-action="check">
                     {{#str}}check, mod_saylorcode{{/str}}
                 </button>
-                <button type="button" class="btn btn-secondary" data-action="submit">
+                <button type="button" class="btn btn-secondary btn-sm" data-action="submit">
                     {{#str}}submit, mod_saylorcode{{/str}}
                 </button>
-                <button type="button" class="btn btn-link" data-action="reset">
+                {{/hastests}}
+                <button type="button" class="btn btn-link btn-sm" data-action="reset">
                     {{#str}}reset, mod_saylorcode{{/str}}
                 </button>
                 {{#allowdownload}}
-                <button type="button" class="btn btn-link" data-action="download">
+                <button type="button" class="btn btn-link btn-sm" data-action="download">
                     {{#str}}download{{/str}}
                 </button>
                 {{/allowdownload}}
-            </div>
 
-            {{! Save and execution state is announced rather than only shown. }}
-            <p class="saylorcode-status" data-region="status" role="status" aria-live="polite"></p>
+                {{! Save and execution state is announced, not only shown. }}
+                <p class="saylorcode-status" data-region="status" role="status" aria-live="polite"></p>
+            </div>
         </section>
 
         <section class="saylorcode-pane saylorcode-pane-results"
                  aria-labelledby="saylorcode-results-heading-{{cmid}}">
-            <h3 id="saylorcode-results-heading-{{cmid}}">{{#str}}console, mod_saylorcode{{/str}}</h3>
-            <pre class="saylorcode-console" data-region="console" tabindex="0"></pre>
+            <h3 id="saylorcode-results-heading-{{cmid}}" class="sr-only">
+                {{#str}}resultsheading, mod_saylorcode{{/str}}
+            </h3>
 
-            <h3>{{#str}}tests, mod_saylorcode{{/str}}</h3>
-            <div data-region="tests"></div>
+            <div class="saylorcode-results-section">
+                <h4 class="saylorcode-results-heading">{{#str}}console, mod_saylorcode{{/str}}</h4>
+                <pre class="saylorcode-console"
+                     data-region="console"
+                     data-placeholder="{{#str}}consoleempty, mod_saylorcode{{/str}}"
+                     tabindex="0"></pre>
+            </div>
 
-            {{#allowhints}}
-            <h3>{{#str}}feedback, mod_saylorcode{{/str}}</h3>
-            <div data-region="feedback"></div>
-            {{/allowhints}}
+            <div class="saylorcode-results-section" data-region="tests-section" hidden>
+                <h4 class="saylorcode-results-heading">{{#str}}tests, mod_saylorcode{{/str}}</h4>
+                <div data-region="tests"></div>
+            </div>
+
+            <div class="saylorcode-results-section" data-region="feedback-section" hidden>
+                <h4 class="saylorcode-results-heading">{{#str}}feedback, mod_saylorcode{{/str}}</h4>
+                <div data-region="feedback"></div>
+            </div>
         </section>
 
     </div>
-    {{/canattempt}}
 </div>
+{{/canattempt}}
 {{#js}}
 require(['mod_saylorcode/workspace'], function(Workspace) {
     Workspace.init({{cmid}});

@@ -48,6 +48,7 @@ const SELECTORS = {
     STATUS: '[data-region="status"]',
     CONSOLE: '[data-region="console"]',
     TESTS: '[data-region="tests"]',
+    TESTS_SECTION: '[data-region="tests-section"]',
     ACTION: '[data-action]',
 };
 
@@ -77,6 +78,7 @@ class Workspace {
         this.status = root.querySelector(SELECTORS.STATUS);
         this.console = root.querySelector(SELECTORS.CONSOLE);
         this.tests = root.querySelector(SELECTORS.TESTS);
+        this.testsSection = root.querySelector(SELECTORS.TESTS_SECTION);
         this.cmid = parseInt(root.dataset.cmid, 10);
         this.entryFilename = root.dataset.entryfilename || 'Main.java';
 
@@ -99,6 +101,7 @@ class Workspace {
     registerListeners() {
         if (this.editor) {
             this.editor.addEventListener('input', () => this.handleInput());
+            this.editor.addEventListener('keydown', (e) => this.handleKeydown(e));
         }
 
         this.root.addEventListener('click', (e) => {
@@ -129,6 +132,40 @@ class Workspace {
         this.saveTimer = window.setTimeout(() => {
             this.save().catch(Notification.exception);
         }, AUTOSAVE_IDLE_MS);
+    }
+
+    /**
+     * Handle keys that should behave like a code editor rather than a form.
+     *
+     * Tab inserts an indent instead of leaving the field, which is what makes a
+     * textarea usable for code at all. Escape restores the normal behaviour, so
+     * a keyboard user is never trapped: press Escape, then Tab, to move on.
+     * That pairing is the accepted way to keep a code field accessible.
+     *
+     * @param {KeyboardEvent} e The key event.
+     */
+    handleKeydown(e) {
+        if (e.key === 'Escape') {
+            this.escapeHatch = true;
+            return;
+        }
+
+        if (e.key !== 'Tab' || this.escapeHatch) {
+            this.escapeHatch = false;
+            return;
+        }
+
+        e.preventDefault();
+
+        const el = this.editor;
+        const start = el.selectionStart;
+        const end = el.selectionEnd;
+        const indent = '    ';
+
+        el.value = el.value.slice(0, start) + indent + el.value.slice(end);
+        el.selectionStart = el.selectionEnd = start + indent.length;
+
+        this.handleInput();
     }
 
     /**
@@ -349,6 +386,12 @@ class Workspace {
         }
 
         this.tests.textContent = '';
+
+        // A section with nothing in it stays hidden rather than showing an
+        // empty heading, which is what made the first build look unfinished.
+        if (this.testsSection) {
+            this.testsSection.hidden = tests.length === 0;
+        }
 
         if (!tests.length) {
             return;

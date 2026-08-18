@@ -1,0 +1,255 @@
+/* Saylor Code Studio workspace.
+ *
+ * Everything is scoped under .saylorcode-shell, because Moodle loads plugin
+ * stylesheets site wide and an unscoped rule here would leak into every page.
+ *
+ * Colours come from Boost's CSS variables where possible, so the workspace
+ * follows the site theme, including dark variants, instead of hard coding a
+ * palette that only looks right against one background.
+ */
+
+.saylorcode-shell {
+    --saylorcode-border: var(--border-color, #dee2e6);
+    --saylorcode-surface: var(--light, #f8f9fa);
+    --saylorcode-code-bg: #1e1e2e;
+    --saylorcode-code-fg: #e6e6ec;
+    --saylorcode-pass: var(--success, #357a32);
+    --saylorcode-fail: var(--danger, #ca3120);
+    --saylorcode-radius: 0.4rem;
+
+    display: block;
+    margin: 1.5rem 0;
+    border: 1px solid var(--saylorcode-border);
+    border-radius: var(--saylorcode-radius);
+    overflow: hidden;
+    background: var(--body-bg, #fff);
+}
+
+/* The filename bar. Gives the workspace an obvious top edge and tells the
+   student which file they are editing, which matters once the class name has
+   to match the file name in Java. */
+.saylorcode-shell .saylorcode-filebar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.75rem;
+    background: var(--saylorcode-surface);
+    border-bottom: 1px solid var(--saylorcode-border);
+    font-size: 0.85rem;
+}
+
+.saylorcode-shell .saylorcode-filename {
+    font-family: var(--font-family-monospace, monospace);
+    font-weight: 600;
+}
+
+.saylorcode-shell .saylorcode-runtime {
+    margin-left: auto;
+    opacity: 0.7;
+}
+
+/* Panes. Side by side once there is room, stacked below that. The editor gets
+   the larger share because it is where the work happens. */
+.saylorcode-shell .saylorcode-panes {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+}
+
+@media (min-width: 992px) {
+    .saylorcode-shell .saylorcode-panes {
+        grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    }
+
+    .saylorcode-shell .saylorcode-pane-results {
+        border-top: 0;
+        border-left: 1px solid var(--saylorcode-border);
+    }
+}
+
+.saylorcode-shell .saylorcode-pane {
+    min-width: 0;
+    padding: 0;
+}
+
+.saylorcode-shell .saylorcode-pane-results {
+    border-top: 1px solid var(--saylorcode-border);
+    background: var(--saylorcode-surface);
+    display: flex;
+    flex-direction: column;
+}
+
+/* The editor itself. A textarea, but it should not look or behave like a
+   comment box: monospace, no wrapping, horizontal scroll, and a tab that
+   indents rather than moving focus is handled in JavaScript. */
+.saylorcode-shell .saylorcode-editor {
+    display: block;
+    width: 100%;
+    min-height: 16rem;
+    margin: 0;
+    padding: 0.75rem 0.9rem;
+    border: 0;
+    border-radius: 0;
+    resize: vertical;
+    background: var(--saylorcode-code-bg);
+    color: var(--saylorcode-code-fg);
+    font-family: var(--font-family-monospace, "SFMono-Regular", Menlo, Consolas, monospace);
+    font-size: 0.875rem;
+    line-height: 1.55;
+    tab-size: 4;
+    white-space: pre;
+    overflow-wrap: normal;
+    overflow-x: auto;
+}
+
+.saylorcode-shell .saylorcode-editor:focus {
+    outline: 2px solid var(--primary, #0f6cbf);
+    outline-offset: -2px;
+}
+
+/* Standard input is secondary, so it is compact and clearly separated from the
+   code rather than sitting beside it as an equal. */
+.saylorcode-shell .saylorcode-stdin-wrap {
+    padding: 0.5rem 0.9rem;
+    border-top: 1px solid var(--saylorcode-border);
+    background: var(--saylorcode-surface);
+}
+
+.saylorcode-shell .saylorcode-stdin-wrap label {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.saylorcode-shell .saylorcode-stdin {
+    width: 100%;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid var(--saylorcode-border);
+    border-radius: 0.25rem;
+    font-family: var(--font-family-monospace, monospace);
+    font-size: 0.8rem;
+    resize: vertical;
+}
+
+/* Action bar. Run is the primary action and reads first. */
+.saylorcode-shell .saylorcode-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 0.9rem;
+    border-top: 1px solid var(--saylorcode-border);
+    background: var(--saylorcode-surface);
+}
+
+.saylorcode-shell .saylorcode-actions .btn {
+    min-height: 2.25rem;
+}
+
+.saylorcode-shell .saylorcode-status {
+    margin: 0 0 0 auto;
+    padding-left: 0.75rem;
+    font-size: 0.8rem;
+    opacity: 0.75;
+    min-height: 1.2rem;
+}
+
+/* Results side. Headings are small and quiet; the output is the content. */
+.saylorcode-shell .saylorcode-results-section {
+    padding: 0.75rem 0.9rem;
+    border-bottom: 1px solid var(--saylorcode-border);
+}
+
+.saylorcode-shell .saylorcode-results-section:last-child {
+    border-bottom: 0;
+}
+
+.saylorcode-shell .saylorcode-results-heading {
+    margin: 0 0 0.4rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    opacity: 0.65;
+}
+
+.saylorcode-shell .saylorcode-console {
+    margin: 0;
+    padding: 0.6rem 0.75rem;
+    min-height: 6rem;
+    max-height: 22rem;
+    overflow: auto;
+    border-radius: 0.25rem;
+    background: var(--saylorcode-code-bg);
+    color: var(--saylorcode-code-fg);
+    font-family: var(--font-family-monospace, monospace);
+    font-size: 0.82rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.saylorcode-shell .saylorcode-console:empty::before {
+    content: attr(data-placeholder);
+    opacity: 0.45;
+}
+
+/* Test outcomes. Colour is never the only signal: each row also carries a
+   symbol and the words pass or fail, per specification section 15. */
+.saylorcode-shell .saylorcode-testlist {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.saylorcode-shell .saylorcode-testlist li {
+    padding: 0.4rem 0.5rem;
+    border-left: 3px solid transparent;
+    border-radius: 0.2rem;
+    margin-bottom: 0.3rem;
+    background: var(--body-bg, #fff);
+}
+
+.saylorcode-shell .saylorcode-test-pass {
+    border-left-color: var(--saylorcode-pass);
+}
+
+.saylorcode-shell .saylorcode-test-fail {
+    border-left-color: var(--saylorcode-fail);
+}
+
+.saylorcode-shell .saylorcode-test-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.saylorcode-shell .saylorcode-test-pass .saylorcode-test-name {
+    color: var(--saylorcode-pass);
+}
+
+.saylorcode-shell .saylorcode-test-fail .saylorcode-test-name {
+    color: var(--saylorcode-fail);
+}
+
+.saylorcode-shell .saylorcode-test-feedback {
+    margin: 0.25rem 0 0;
+    font-size: 0.82rem;
+    opacity: 0.85;
+}
+
+/* A results section with nothing in it is hidden rather than shown as an empty
+   heading, which is what made the first build look unfinished. */
+.saylorcode-shell .saylorcode-results-section[hidden] {
+    display: none;
+}
+
+/* Embedded in a Book, Page or Lesson the workspace should read as a distinct
+   tool inside the reading rather than as more of the page. */
+.saylorcode-embed .saylorcode-shell {
+    margin: 1.25rem 0;
+}
+
+.saylorcode-embed-linkonly {
+    margin: 1rem 0;
+}

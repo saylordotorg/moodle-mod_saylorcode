@@ -24,6 +24,7 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+$string['actionsheading'] = 'Code actions';
 $string['activitymode'] = 'Activity mode';
 $string['activitymode_help'] = 'A guided lesson leads a student through small sequenced steps. A challenge presents one problem with less scaffolding. A project is a larger open task. A playground is an ungraded workspace for experimenting.';
 $string['allowdownload'] = 'Allow students to download their code';
@@ -37,6 +38,9 @@ $string['completiondetail:passtests'] = 'Pass the required tests';
 $string['completionminscore'] = 'Require a minimum score';
 $string['completionpasstests'] = 'Require the required tests to pass';
 $string['console'] = 'Console';
+$string['consoleempty'] = 'Output from your program appears here when you run it.';
+$string['editorheading'] = 'Code editor';
+$string['editorlabel'] = 'Code editor for {$a}. Press Tab to indent, or Escape then Tab to leave the editor.';
 $string['entryfilename'] = 'Entry file name';
 $string['entryfilename_help'] = 'The file the student edits, for example Main.java. For Java the class name must match this file name.';
 $string['errorcompile'] = 'Your code did not compile.';
@@ -94,6 +98,7 @@ $string['reset'] = 'Reset';
 $string['resetattempts'] = 'Delete all attempts, snapshots and execution records';
 $string['resetconfirm'] = 'Resetting restores the starter code. A snapshot of your current work is saved first, so you can recover it.';
 $string['resetdone'] = 'The starter code has been restored. Your previous work was saved and can be recovered.';
+$string['resultsheading'] = 'Results';
 $string['run'] = 'Run';
 $string['runnerunavailable'] = 'The code runner is temporarily unavailable. Your work has been saved. Please try again shortly.';
 $string['running'] = 'Running your code';

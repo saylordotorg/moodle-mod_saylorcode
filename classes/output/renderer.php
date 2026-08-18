@@ -60,12 +60,19 @@ class renderer extends plugin_renderer_base {
             $initialcode = (string) ($files[$entryfilename] ?? reset($files));
         }
 
+        // Show the language by its student facing name rather than the profile
+        // id, which is an internal handle and means nothing to a learner.
+        $profile = (new \local_saylorcode\local\runtime\profile_manager())
+            ->get_profile($moduleinstance->profileid);
+        $runtimename = $profile ? $profile->get_display_name() : $moduleinstance->profileid;
+
         $data = [
             'cmid' => $cm->id,
             'instanceid' => $moduleinstance->id,
             'activitymode' => $moduleinstance->activitymode,
             'stableid' => $moduleinstance->stableid,
             'profileid' => $moduleinstance->profileid,
+            'runtimename' => $runtimename,
             'entryfilename' => $entryfilename,
             'initialcode' => $initialcode,
             'hastests' => trim((string) ($moduleinstance->testcases ?? '')) !== '',
