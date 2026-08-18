@@ -3,9 +3,8 @@
 Moodle activity module for [Saylor Code Studio](https://github.com/saylordotorg/moodle-local_saylorcode).
 Presents coding exercises as guided lessons, challenges, projects or playgrounds inside a course.
 
-**Status: alpha, Phase 1 vertical slice.** The data model, settings, grading, completion, privacy
-and backup layers are implemented. The execution web services are not yet wired — see
-[What is not here yet](#what-is-not-here-yet).
+**Status: alpha, Phase 1 vertical slice.** Run, Check and Submit work end to end against a Jobe
+runner. See [What is not here yet](#what-is-not-here-yet) for the honest gaps.
 
 ## Requirements
 
@@ -55,16 +54,57 @@ headings so a screen-reader user can jump between instructions, editor and resul
 status line is a live region, so save and execution state changes are announced without stealing
 focus (spec §15).
 
+## The three actions
+
+They differ in consequence, not mechanism — that difference is what `execution_service` encodes
+(spec §9.4):
+
+| Action | Runs | Grades | Records |
+|---|---|---|---|
+| **Run** | The program, with your standard input | Never | Nothing |
+| **Check** | Public test cases only | No | Nothing |
+| **Submit** | Every test case | Yes | Attempt, gradebook, completion |
+
+Hidden cases count towards a submission's score without ever being described to the student —
+not their name, expected value, or feedback. Every action saves first, so what executes is always
+what is stored.
+
+**Output comparison is normalised, not exact.** Trailing whitespace and trailing blank lines are
+not what a CS101 exercise is teaching, and failing a student for them teaches the wrong lesson.
+
+**A stale save is refused, not applied.** Two tabs open on one exercise is common; neither may
+silently discard the other's work, so a save arriving behind newer work is reported and the
+student is asked.
+
+### Test case format
+
+A JSON array on the activity. Each entry needs at least `expected`:
+
+```json
+[
+  {"id": "T1", "name": "Doubles four", "stdin": "4\n", "expected": "8\n",
+   "ispublic": true, "weight": 1, "feedback": "Check the arithmetic."},
+  {"id": "T2", "name": "Handles a negative", "stdin": "-7\n", "expected": "-14\n",
+   "ispublic": false, "weight": 2}
+]
+```
+
+Malformed JSON is rejected in the settings form rather than failing at Check time, long after the
+author has moved on.
+
 ## What is not here yet
 
-Honest scope. This plugin is structurally complete but not yet functional end to end:
+Honest scope:
 
-- **Execution web services.** `db/services.php` and the external API for save / run / check /
-  submit are the next increment. The client-side state machine in `amd/src/workspace.js` is
-  written against that seam, so the wiring is a defined piece of work rather than a redesign.
+- **Starter code and test cases live on the activity**, not in a central library. That keeps CS101
+  unblocked, but it means an exercise used in two places is defined twice — exactly what spec §5.2
+  wants to avoid. The library supersedes this in Phase 3.
+- **Only stdin/stdout test cases.** The other test types in spec §10.5 — unit-test frameworks,
+  numeric tolerance, regular expressions — are not implemented.
 - **Guided step navigation UI.** The `saylorcode_steps` schema and backup support exist; the
   student-facing step sequencer does not.
 - **Instructor review screens** (spec §17).
+- **Hints and solutions.** The settings and capability exist; the student-facing flow does not.
 - **Editor upgrade.** The MVP uses a plain accessible `<textarea>`. Spec §9.3 treats replacing it
   with Monaco or CodeMirror as a separate decision gated on accessibility testing.
 
