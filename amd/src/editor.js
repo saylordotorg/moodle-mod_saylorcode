@@ -89,8 +89,8 @@ const richEditor = (textarea, ariaLabel) => {
         state: EditorState.create({
             doc: textarea.value,
             extensions: [
-                // basicSetup brings the line number gutter, the fold gutter,
-                // bracket matching, undo history and the standard keymap.
+                // The basic setup supplies the line number gutter, the fold
+                // gutter, bracket matching, undo history and the keymap.
                 basicSetup,
                 EditorView.updateListener.of((update) => {
                     if (!update.docChanged) {
