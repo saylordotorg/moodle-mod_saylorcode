@@ -25,6 +25,11 @@
     --sc-fail: var(--danger, #ca3120);
     --sc-radius: 0.4rem;
 
+    /* Neutral hover wash. A flat overlay rather than a colour mix of
+       currentColor, which the CSS validator rejects and which behaves
+       unpredictably where currentColor is inherited. */
+    --sc-hover: rgba(127, 127, 127, 0.14);
+
     /* Editor surface. Dark by default, with a light pair the student can
        switch to from the header. */
     --sc-code-bg: #1e1e2e;
@@ -147,7 +152,7 @@
 
 .saylorcode-shell .saylorcode-iconbtn:hover {
     opacity: 1;
-    background: color-mix(in srgb, currentColor 10%, transparent);
+    background: var(--sc-hover);
 }
 
 .saylorcode-shell .saylorcode-iconbtn:focus-visible {
@@ -660,7 +665,7 @@
     font-weight: 600;
     line-height: 1.2;
     cursor: pointer;
-    transition: background-color 0.12s ease, transform 0.06s ease;
+    transition: background-color 0.12s ease, transform 0.1s ease;
 }
 
 .saylorcode-shell .saylorcode-btn:active {
@@ -688,7 +693,7 @@
 }
 
 .saylorcode-shell .saylorcode-btn-secondary:hover {
-    background: color-mix(in srgb, currentColor 8%, transparent);
+    background: var(--sc-hover);
 }
 
 .saylorcode-shell .saylorcode-btn-ghost {

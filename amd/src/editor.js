@@ -81,7 +81,8 @@ const richEditor = (textarea, ariaLabel) => {
     textarea.setAttribute('tabindex', '-1');
     textarea.setAttribute('aria-hidden', 'true');
 
-    let notify = () => {};
+    // Replaced by onChange(); until then a change has nowhere to go.
+    let notify = () => false;
 
     const view = new EditorView({
         parent: host,
@@ -95,7 +96,7 @@ const richEditor = (textarea, ariaLabel) => {
                     if (!update.docChanged) {
                         return;
                     }
-                    // Mirror into the textarea so the save path, the download
+                    // Mirrored into the textarea so the save path, the download
                     // and the non-JavaScript fallback all keep working.
                     textarea.value = update.state.doc.toString();
                     notify();
