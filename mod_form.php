@@ -80,6 +80,15 @@ class mod_saylorcode_mod_form extends moodleform_mod {
         $mform->setDefault('versionpolicy', 'latest');
         $mform->hideIf('versionpolicy', 'activitymode', 'eq', 'playground');
 
+        // Pinning had nowhere to point until the exercise library existed, so
+        // the policy could be chosen and the version could not. A graded
+        // activity needs to hold one the way a graded step now can.
+        $mform->addElement('text', 'pinnedversion', get_string('pinnedversion', 'mod_saylorcode'), ['size' => 6]);
+        $mform->setType('pinnedversion', PARAM_INT);
+        $mform->addHelpButton('pinnedversion', 'pinnedversion', 'mod_saylorcode');
+        $mform->hideIf('pinnedversion', 'versionpolicy', 'neq', 'pinned');
+        $mform->hideIf('pinnedversion', 'activitymode', 'eq', 'playground');
+
         $profiles = (new profile_manager())->get_menu();
         $mform->addElement('select', 'profileid', get_string('profileid', 'mod_saylorcode'), $profiles);
         $mform->addHelpButton('profileid', 'profileid', 'mod_saylorcode');
@@ -481,6 +490,18 @@ class mod_saylorcode_mod_form extends moodleform_mod {
             if ($stableid === '' || !stable_id::is_valid($stableid)) {
                 $errors['stableid'] = get_string('stableidinvalid', 'mod_saylorcode');
             }
+        }
+
+        // A pinned activity with no version resolves as a broken pin and falls
+        // back to its own content without telling anybody, so it is refused
+        // while the author can still see why. Not applied to a playground,
+        // which has no exercise to pin.
+        if (
+            ($data['activitymode'] ?? '') !== 'playground'
+                && ($data['versionpolicy'] ?? '') === 'pinned'
+                && (int) ($data['pinnedversion'] ?? 0) < 1
+        ) {
+            $errors['pinnedversion'] = get_string('pinnedversionrequired', 'mod_saylorcode');
         }
 
         $minscore = (int) ($data['completionminscore'] ?? 0);

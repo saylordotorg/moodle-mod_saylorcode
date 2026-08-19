@@ -73,6 +73,12 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
             'timecreated' => 'privacy:metadata:executions:timecreated',
         ], 'privacy:metadata:executions');
 
+        $collection->add_database_table('saylorcode_testresults', [
+            'testname' => 'privacy:metadata:testresults:testname',
+            'passed' => 'privacy:metadata:testresults:passed',
+            'timecreated' => 'privacy:metadata:testresults:timecreated',
+        ], 'privacy:metadata:testresults');
+
         // Source code leaves Moodle to be executed. The service layer declares
         // that transmission in detail.
         $collection->link_subsystem('core_files', 'privacy:metadata:snapshots');
@@ -316,6 +322,15 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
         [$insql, $params] = $DB->get_in_or_equal($attemptids);
         $DB->delete_records_select('saylorcode_snapshots', "attemptid $insql", $params);
         $DB->delete_records_select('saylorcode_stepattempts', "attemptid $insql", $params);
+        // Removed before the executions they hang off, since they are found
+        // through them: deleting the executions first would leave these rows
+        // unreachable and undeletable.
+        $DB->delete_records_select(
+            'saylorcode_testresults',
+            "executionid IN (SELECT id FROM {saylorcode_executions} WHERE attemptid $insql)",
+            $params
+        );
+
         $DB->delete_records_select('saylorcode_executions', "attemptid $insql", $params);
     }
 }

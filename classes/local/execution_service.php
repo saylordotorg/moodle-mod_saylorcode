@@ -331,7 +331,7 @@ class execution_service {
             }
         }
 
-        $DB->insert_record('saylorcode_executions', (object) [
+        $executionid = $DB->insert_record('saylorcode_executions', (object) [
             'requestid' => $response->get_request_id(),
             'attemptid' => $attempt->id,
             'snapshotid' => null,
@@ -346,6 +346,8 @@ class execution_service {
             'teststotal' => $total,
             'timecreated' => time(),
         ]);
+
+        $this->record_test_results($executionid, $response);
     }
 
     /**
@@ -383,5 +385,42 @@ class execution_service {
      */
     protected function new_request_id(): string {
         return bin2hex(random_bytes(16));
+    }
+    /**
+     * Record which cases an execution passed.
+     *
+     * Only the author's case name and the outcome. No student code, no
+     * expected value and no actual output, so this stays telemetry rather than
+     * becoming a second copy of the student's work, and a hidden case is
+     * recorded by name for the teacher without that name ever reaching a
+     * browser.
+     *
+     * A report that says which test students fail most is the difference
+     * between knowing a class is struggling and knowing what they are
+     * struggling with, and it cannot be reconstructed from a passed-out-of-
+     * total count after the fact.
+     *
+     * @param int $executionid The execution these belong to.
+     * @param execution_response $response The runner's response.
+     */
+    protected function record_test_results(int $executionid, execution_response $response): void {
+        global $DB;
+
+        $rows = [];
+
+        foreach ($response->get_test_results() as $result) {
+            $rows[] = (object) [
+                'executionid' => $executionid,
+                'saylorcodeid' => $this->instance->id,
+                'testname' => \core_text::substr($result->get_name(), 0, 255),
+                'passed' => $result->has_passed() ? 1 : 0,
+                'ispublic' => $result->is_public() ? 1 : 0,
+                'timecreated' => time(),
+            ];
+        }
+
+        if ($rows) {
+            $DB->insert_records('saylorcode_testresults', $rows);
+        }
     }
 }

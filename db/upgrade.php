@@ -100,5 +100,28 @@ function xmldb_saylorcode_upgrade($oldversion): bool {
         upgrade_mod_savepoint(true, 2026081903, 'saylorcode');
     }
 
+    if ($oldversion < 2026081908) {
+        $table = new xmldb_table('saylorcode_testresults');
+
+        if (!$dbman->table_exists($table)) {
+            $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+            $table->add_field('executionid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+            $table->add_field('saylorcodeid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+            $table->add_field('testname', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
+            $table->add_field('passed', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0');
+            $table->add_field('ispublic', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '1');
+            $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+            $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+            $table->add_key('executionid', XMLDB_KEY_FOREIGN, ['executionid'], 'saylorcode_executions', ['id']);
+            $table->add_key('saylorcodeid', XMLDB_KEY_FOREIGN, ['saylorcodeid'], 'saylorcode', ['id']);
+            $table->add_index('saylorcodeid-passed', XMLDB_INDEX_NOTUNIQUE, ['saylorcodeid', 'passed']);
+
+            $dbman->create_table($table);
+        }
+
+        upgrade_mod_savepoint(true, 2026081908, 'saylorcode');
+    }
+
     return true;
 }

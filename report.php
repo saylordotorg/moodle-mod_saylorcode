@@ -96,6 +96,47 @@ if (!$table->is_downloading()) {
 
     echo html_writer::div($cards, 'saylorcode-measures');
 
+    // The cases students fail most. Placed before the names, for the same
+    // reason the step summary is: a case everybody fails is a fact about the
+    // exercise rather than about the class.
+    $failed = $report->get_failed_tests();
+
+    if ($failed) {
+        echo $OUTPUT->heading(get_string('reportfailedtests', 'mod_saylorcode'), 3);
+
+        $failedtable = new html_table();
+        $failedtable->head = [
+            get_string('reporttestname', 'mod_saylorcode'),
+            get_string('reporttestfailures', 'mod_saylorcode'),
+            get_string('reporttestruns', 'mod_saylorcode'),
+            get_string('reporttestrate', 'mod_saylorcode'),
+        ];
+        $failedtable->attributes['class'] = 'generaltable saylorcode-failedtests';
+
+        foreach ($failed as $test) {
+            $name = format_string($test['name']);
+
+            if (!$test['ispublic']) {
+                // Named for the teacher. A hidden case is never described to a
+                // student, but a teacher needs to know when it is the one
+                // everybody trips on.
+                $name .= ' ' . html_writer::span(
+                    get_string('reporttesthidden', 'mod_saylorcode'),
+                    'badge badge-secondary bg-secondary text-white'
+                );
+            }
+
+            $failedtable->data[] = [
+                $name,
+                $test['failures'],
+                $test['runs'],
+                $test['rate'] === null ? '—' : $test['rate'] . '%',
+            ];
+        }
+
+        echo html_writer::table($failedtable);
+    }
+
     // The step view comes first for a guided lesson, because a step everyone
     // is stuck on is a fact about the lesson, and worth knowing before reading
     // a list of names.
