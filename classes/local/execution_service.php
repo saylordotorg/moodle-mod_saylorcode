@@ -60,6 +60,7 @@ class execution_service {
      * @param stdClass $instance The activity instance.
      * @param cm_info|stdClass $cm The course module.
      * @param provider_interface|null $provider Backend, defaulting to the configured one.
+     * @param stdClass|null $step The guided lesson step being judged, where there is one.
      */
     public function __construct(
         stdClass $instance,
