@@ -156,6 +156,73 @@ final class content_test extends \advanced_testcase {
     }
 
     /**
+     * A step with its own reference resolves on that exercise.
+     *
+     * Judging it on the activity's tests instead would unlock the step for
+     * passing a suite it says nothing about, and would lock a step that has
+     * tests for ever on an activity that has none.
+     */
+    public function test_a_step_resolves_on_its_own_reference(): void {
+        global $DB;
+
+        $this->publish('CS102-U01-E01');
+        $instance = $this->activity();
+
+        $step = (object) [
+            'stableid' => 'CS102-U01-E01',
+            'versionpolicy' => 'latest',
+            'pinnedversion' => 0,
+            'carryforward' => 0,
+        ];
+
+        $resolved = content::for_step($instance, $step);
+
+        $this->assertSame("library starter
+", $resolved->get_starter_code());
+        $this->assertSame('Library case', $resolved->get_test_cases()[0]['name']);
+    }
+
+    /**
+     * A step with no reference of its own follows the activity.
+     */
+    public function test_a_step_without_a_reference_follows_the_activity(): void {
+        $instance = $this->activity();
+        $step = (object) ['stableid' => '', 'carryforward' => 1];
+
+        $this->assertSame(
+            "activity starter
+",
+            content::for_step($instance, $step)->get_starter_code()
+        );
+    }
+
+    /**
+     * The entry filename comes from wherever the code did.
+     *
+     * The browser is told this name and sends work back under it. A stale name
+     * means the runner receives a file the code does not match, which for Java
+     * is a class that will not compile.
+     */
+    public function test_the_entry_filename_follows_the_exercise(): void {
+        $repository = new exercise_repository();
+        $exercise = $repository->create('CS101-U01-E01', 'Renamed', [
+            'entryfilename' => 'Solution.java',
+            'startercode' => "public class Solution {}
+",
+            'testcases' => json_encode([['name' => 'One', 'expected' => 'x', 'ispublic' => 1, 'weight' => 1]]),
+        ]);
+        $repository->publish($exercise, 'First');
+
+        $instance = $this->activity(['entryfilename' => 'Main.java']);
+        $resolved = content::for_instance($instance);
+
+        $this->assertSame('Solution.java', $resolved->get_entry_filename());
+
+        $files = (new attempt_manager($instance))->get_starter_files();
+        $this->assertArrayHasKey('Solution.java', $files);
+    }
+
+    /**
      * A draft that has never been published does not reach a student.
      */
     public function test_an_unpublished_draft_does_not_reach_a_student(): void {

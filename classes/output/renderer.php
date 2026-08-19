@@ -136,7 +136,7 @@ class renderer extends plugin_renderer_base {
             'steps' => $list,
         ]);
 
-        return $panel . $this->render_shell($moduleinstance, $cm, $context, false);
+        return $panel . $this->render_shell($moduleinstance, $cm, $context, false, $current);
     }
 
     /**
@@ -165,13 +165,15 @@ class renderer extends plugin_renderer_base {
      * @param cm_info $cm The course module.
      * @param context_module $context The module context.
      * @param bool $preview Whether this is an author preview.
+     * @param stdClass|null $step The guided lesson step being shown, where there is one.
      * @return string HTML.
      */
     protected function render_shell(
         stdClass $moduleinstance,
         cm_info $cm,
         context_module $context,
-        bool $preview
+        bool $preview,
+        ?stdClass $step = null
     ): string {
         global $USER;
 
@@ -183,17 +185,33 @@ class renderer extends plugin_renderer_base {
         // Seed the editor server side. The student sees their own code in the
         // initial HTML rather than after a round trip, so a slow connection
         // shows work-in-progress rather than an empty box.
-        $entryfilename = $moduleinstance->entryfilename ?? 'Main.java';
+        // Taken from the resolution, not the activity column. A published
+        // exercise can name a different file, and telling the browser the old
+        // name would have it send work back under a filename the runner does
+        // not expect, which for Java means a class that will not compile.
+        $resolved = $step !== null
+            ? content::for_step($moduleinstance, $step)
+            : content::for_instance($moduleinstance);
+        $entryfilename = $resolved->get_entry_filename();
         $initialcode = '';
 
         if ($preview) {
             // The starter code is what a student meets on first opening, which
             // is the state a preview is for.
-            $initialcode = (string) ($moduleinstance->startercode ?? '');
+            $initialcode = $resolved->get_starter_code();
         } else if ($canattempt) {
             $manager = new \mod_saylorcode\local\attempt_manager($moduleinstance);
             $attempt = $manager->get_or_create_attempt((int) $USER->id);
             $files = $manager->get_current_files($attempt);
+
+            // A step that does not carry work forward opens on its own starter,
+            // and it has to do that on the first paint. Waiting for the student
+            // to click the step they are already on would show them the
+            // previous step's code, or the activity's.
+            if ($step !== null) {
+                $files = (new step_manager($moduleinstance))->starting_files_for($step, $files);
+            }
+
             $initialcode = (string) ($files[$entryfilename] ?? reset($files));
         }
 
@@ -253,7 +271,15 @@ class renderer extends plugin_renderer_base {
      * @return array Lines, each as an array with a line key.
      */
     protected function expected_lines(stdClass $moduleinstance): array {
-        $cases = json_decode((string) ($moduleinstance->testcases ?? ''), true);
+        // Resolved, so the tab shows the expectation Check and Submit judge
+        // against. Showing the activity's while grading on the library's would
+        // tell the student their correct answer is wrong.
+        $cases = content::for_instance($moduleinstance)->get_test_cases();
+
+        if (!$cases) {
+            $cases = json_decode((string) ($moduleinstance->testcases ?? ''), true);
+        }
+
         if (!is_array($cases)) {
             return [];
         }

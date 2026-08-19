@@ -45,6 +45,9 @@ class execution_service {
     /** @var stdClass The activity instance. */
     protected stdClass $instance;
 
+    /** @var stdClass|null The guided lesson step being judged, where there is one. */
+    protected ?stdClass $step = null;
+
     /** @var cm_info|stdClass The course module. */
     protected $cm;
 
@@ -58,10 +61,16 @@ class execution_service {
      * @param cm_info|stdClass $cm The course module.
      * @param provider_interface|null $provider Backend, defaulting to the configured one.
      */
-    public function __construct(stdClass $instance, $cm, ?provider_interface $provider = null) {
+    public function __construct(
+        stdClass $instance,
+        $cm,
+        ?provider_interface $provider = null,
+        ?stdClass $step = null
+    ) {
         $this->instance = $instance;
         $this->cm = $cm;
         $this->provider = $provider ?? jobe_provider::create_from_config();
+        $this->step = $step;
     }
 
     /**
@@ -250,7 +259,14 @@ class execution_service {
         // exercise their starter code came from. Reading these off the instance
         // while the code came from the library would grade one thing against
         // another.
-        $cases = content::for_instance($this->instance)->get_test_cases();
+        //
+        // A step with its own reference is judged on that exercise, not the
+        // activity's: otherwise passing the activity's tests would unlock a
+        // step it says nothing about, and a step with tests would stay locked
+        // for ever on an activity that has none.
+        $cases = $this->step !== null
+            ? content::for_step($this->instance, $this->step)->get_test_cases()
+            : content::for_instance($this->instance)->get_test_cases();
 
         if ($cases) {
             return $cases;
