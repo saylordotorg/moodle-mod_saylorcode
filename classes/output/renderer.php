@@ -77,7 +77,7 @@ class renderer extends plugin_renderer_base {
             'runtimename' => $runtimename,
             'entryfilename' => $entryfilename,
             'initialcode' => $initialcode,
-            'hastests' => trim((string) ($moduleinstance->testcases ?? '')) !== '',
+            'hastests' => self::has_tests($moduleinstance),
             'layout' => $layout,
             'isdrawer' => $layout === 'drawer',
             'istabs' => $layout === 'tabs',
@@ -123,5 +123,19 @@ class renderer extends plugin_renderer_base {
         }
 
         return [];
+    }
+    /**
+     * Whether the activity actually defines any test cases.
+     *
+     * Decides from the decoded array rather than from whether the stored string
+     * is non-empty, because "[]" is a non-empty string describing no tests.
+     *
+     * @param stdClass $moduleinstance The activity instance.
+     * @return bool
+     */
+    protected static function has_tests(stdClass $moduleinstance): bool {
+        $decoded = json_decode((string) ($moduleinstance->testcases ?? ''), true);
+
+        return is_array($decoded) && !empty($decoded);
     }
 }

@@ -112,13 +112,96 @@ class mod_saylorcode_mod_form extends moodleform_mod {
 
         $mform->addElement(
             'textarea',
-            'testcases',
-            get_string('testcases', 'mod_saylorcode'),
+            'referencesolution',
+            get_string('referencesolution', 'mod_saylorcode'),
             ['rows' => 10, 'cols' => 80, 'spellcheck' => 'false', 'class' => 'saylorcode-codearea']
         );
-        $mform->setType('testcases', PARAM_RAW);
-        $mform->addHelpButton('testcases', 'testcases', 'mod_saylorcode');
-        $mform->hideIf('testcases', 'activitymode', 'eq', 'playground');
+        $mform->setType('referencesolution', PARAM_RAW);
+        $mform->addHelpButton('referencesolution', 'referencesolution', 'mod_saylorcode');
+        $mform->hideIf('referencesolution', 'activitymode', 'eq', 'playground');
+
+        // Test cases, as rows rather than as JSON. The stored column is still
+        // JSON, so nothing about the data model changes and existing
+        // activities keep working; only the way an author edits them does.
+        $mform->addElement('header', 'testcasesheader', get_string('testcases', 'mod_saylorcode'));
+        $mform->addElement('static', 'testcasesintro', '', get_string('testcases_help', 'mod_saylorcode'));
+
+        $repeated = [
+            $mform->createElement(
+                'text',
+                'tcname',
+                get_string('tcname', 'mod_saylorcode'),
+                ['size' => 45]
+            ),
+            $mform->createElement(
+                'textarea',
+                'tcstdin',
+                get_string('tcstdin', 'mod_saylorcode'),
+                ['rows' => 2, 'cols' => 45, 'spellcheck' => 'false']
+            ),
+            $mform->createElement(
+                'textarea',
+                'tcexpected',
+                get_string('tcexpected', 'mod_saylorcode'),
+                ['rows' => 3, 'cols' => 45, 'spellcheck' => 'false']
+            ),
+            $mform->createElement(
+                'text',
+                'tcfeedback',
+                get_string('tcfeedback', 'mod_saylorcode'),
+                ['size' => 60]
+            ),
+            $mform->createElement('advcheckbox', 'tcpublic', get_string('tcpublic', 'mod_saylorcode')),
+            $mform->createElement('text', 'tcweight', get_string('tcweight', 'mod_saylorcode'), ['size' => 4]),
+        ];
+
+        $repeatoptions = [
+            'tcname' => ['type' => PARAM_TEXT, 'helpbutton' => ['tcname', 'mod_saylorcode']],
+            'tcstdin' => ['type' => PARAM_RAW],
+            'tcexpected' => ['type' => PARAM_RAW],
+            'tcfeedback' => ['type' => PARAM_TEXT, 'helpbutton' => ['tcfeedback', 'mod_saylorcode']],
+            'tcpublic' => ['type' => PARAM_BOOL, 'default' => 1, 'helpbutton' => ['tcpublic', 'mod_saylorcode']],
+            'tcweight' => ['type' => PARAM_FLOAT, 'default' => 1],
+        ];
+
+        $existing = $this->count_existing_cases();
+
+        $this->repeat_elements(
+            $repeated,
+            max(1, $existing),
+            $repeatoptions,
+            'testcaserepeats',
+            'testcaseadd',
+            2,
+            get_string('addtestcases', 'mod_saylorcode'),
+            true
+        );
+
+        // Validate. Deliberately a button rather than a save time check, so an
+        // author can iterate on a case and see the answer immediately instead
+        // of discovering at submit that the exercise was never runnable.
+        $mform->addElement(
+            'static',
+            'validatecontrol',
+            get_string('validate', 'mod_saylorcode'),
+            \html_writer::div(
+                \html_writer::tag(
+                    'button',
+                    get_string('validaterun', 'mod_saylorcode'),
+                    [
+                        'type' => 'button',
+                        'class' => 'btn btn-secondary',
+                        'data-action' => 'saylorcode-validate',
+                    ]
+                ) .
+                \html_writer::div('', 'saylorcode-validate-result mt-2', ['data-region' => 'validate-result']),
+                'saylorcode-validate'
+            )
+        );
+        $mform->addHelpButton('validatecontrol', 'validate', 'mod_saylorcode');
+
+        global $PAGE;
+        $PAGE->requires->js_call_amd('mod_saylorcode/authoring', 'init');
 
         // Student experience.
         $mform->addElement('header', 'experienceheader', get_string('feedback', 'mod_saylorcode'));
@@ -158,6 +241,106 @@ class mod_saylorcode_mod_form extends moodleform_mod {
         $this->standard_grading_coursemodule_elements();
         $this->standard_coursemodule_elements();
         $this->add_action_buttons();
+    }
+
+    /**
+     * How many test cases the activity being edited already has.
+     *
+     * @return int
+     */
+    protected function count_existing_cases(): int {
+        $current = $this->current ?? null;
+        if (empty($current->testcases)) {
+            return 0;
+        }
+
+        $decoded = json_decode((string) $current->testcases, true);
+
+        return is_array($decoded) ? count($decoded) : 0;
+    }
+
+    /**
+     * Spread the stored JSON across the repeated form rows.
+     *
+     * @param array $defaultvalues The values being loaded into the form.
+     */
+    public function data_preprocessing(&$defaultvalues): void {
+        parent::data_preprocessing($defaultvalues);
+
+        $cases = json_decode((string) ($defaultvalues['testcases'] ?? ''), true);
+        if (!is_array($cases)) {
+            return;
+        }
+
+        foreach (array_values($cases) as $i => $case) {
+            $defaultvalues['tcname[' . $i . ']'] = (string) ($case['name'] ?? '');
+            $defaultvalues['tcstdin[' . $i . ']'] = (string) ($case['stdin'] ?? '');
+            $defaultvalues['tcexpected[' . $i . ']'] = (string) ($case['expected'] ?? '');
+            $defaultvalues['tcfeedback[' . $i . ']'] = (string) ($case['feedback'] ?? '');
+            $defaultvalues['tcpublic[' . $i . ']'] = !empty($case['ispublic']) ? 1 : 0;
+            $defaultvalues['tcweight[' . $i . ']'] = (float) ($case['weight'] ?? 1);
+        }
+    }
+
+    /**
+     * Gather the rows back into the stored JSON.
+     *
+     * A row with no expected output is dropped rather than saved, because the
+     * repeat control always renders spare rows and an author should not have to
+     * clear them by hand.
+     *
+     * @return stdClass|null The submitted data.
+     */
+    public function get_data() {
+        $data = parent::get_data();
+
+        if (!$data) {
+            return $data;
+        }
+
+        $cases = self::rows_to_cases($data);
+
+        // Store nothing rather than "[]" for an empty list. The string "[]" is
+        // not empty, so anything testing the column for emptiness would decide
+        // the activity has tests and offer Check with nothing to check.
+        $data->testcases = $cases ? json_encode($cases) : '';
+
+        return $data;
+    }
+
+    /**
+     * Turn submitted rows into test case records.
+     *
+     * @param stdClass|array $data Submitted form data.
+     * @return array
+     */
+    public static function rows_to_cases($data): array {
+        $data = (array) $data;
+        $names = $data['tcname'] ?? [];
+        $expected = $data['tcexpected'] ?? [];
+
+        $cases = [];
+        foreach (array_keys((array) $expected) as $i) {
+            $out = (string) ($expected[$i] ?? '');
+            $name = trim((string) ($names[$i] ?? ''));
+
+            // An untouched spare row has nothing to say.
+            if (trim($out) === '' && $name === '') {
+                continue;
+            }
+
+            $cases[] = [
+                'id' => 'T' . (count($cases) + 1),
+                'name' => $name !== '' ? $name : get_string('tcdefaultname', 'mod_saylorcode', count($cases) + 1),
+                'stdin' => (string) ($data['tcstdin'][$i] ?? ''),
+                'expected' => $out,
+                'ispublic' => !empty($data['tcpublic'][$i]),
+                'weight' => (float) ($data['tcweight'][$i] ?? 1),
+                'feedback' => (string) ($data['tcfeedback'][$i] ?? ''),
+            ];
+        }
+
+        return $cases;
     }
 
     /**
@@ -221,20 +404,26 @@ class mod_saylorcode_mod_form extends moodleform_mod {
             $errors['completionminscore'] = get_string('completionminscore', 'mod_saylorcode');
         }
 
-        // Malformed test cases would otherwise fail silently at Check time,
-        // long after the author has moved on, so they are rejected here.
-        $testcases = trim((string) ($data['testcases'] ?? ''));
-        if ($testcases !== '') {
-            $decoded = json_decode($testcases, true);
-            if (!is_array($decoded)) {
-                $errors['testcases'] = get_string('testcasesinvalid', 'mod_saylorcode');
-            } else {
-                foreach ($decoded as $case) {
-                    if (!is_array($case) || !array_key_exists('expected', $case)) {
-                        $errors['testcases'] = get_string('testcasesinvalid', 'mod_saylorcode');
-                        break;
-                    }
-                }
+        // A row is only meaningful if it says what it expects. A weight of
+        // zero would silently remove a case from the score, which is almost
+        // never what an author means.
+        foreach ((array) ($data['tcexpected'] ?? []) as $i => $expected) {
+            $named = trim((string) ($data['tcname'][$i] ?? '')) !== '';
+            $hasexpected = trim((string) $expected) !== '';
+
+            // Active means the same thing here as it does in rows_to_cases():
+            // a row with either a name or expected output is saved, so a row
+            // with only expected output must be validated too.
+            if (!$named && !$hasexpected) {
+                continue;
+            }
+
+            if (!$hasexpected) {
+                $errors['tcexpected[' . $i . ']'] = get_string('tcexpectedrequired', 'mod_saylorcode');
+            }
+
+            if ((float) ($data['tcweight'][$i] ?? 1) <= 0) {
+                $errors['tcweight[' . $i . ']'] = get_string('tcweightpositive', 'mod_saylorcode');
             }
         }
 

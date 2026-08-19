@@ -228,32 +228,16 @@ class execution_service {
     /**
      * Compare produced output with what a case expects.
      *
-     * Normalised rather than exact: trailing whitespace on a line, and trailing
-     * blank lines, are not what the exercise is teaching, and failing a student
-     * for them teaches the wrong lesson (specification section 10.5).
+     * Delegates to the shared comparator so that the student path and the
+     * author's Validate button can never disagree about whether an output
+     * matches.
      *
      * @param string $actual Output the program produced.
      * @param string $expected Output the case expects.
      * @return bool
      */
     protected function output_matches(string $actual, string $expected): bool {
-        return $this->normalise($actual) === $this->normalise($expected);
-    }
-
-    /**
-     * Normalise output for comparison.
-     *
-     * @param string $text The text to normalise.
-     * @return string
-     */
-    protected function normalise(string $text): string {
-        $text = str_replace(["\r\n", "\r"], "\n", $text);
-        $lines = explode("\n", $text);
-        $lines = array_map(static function (string $line): string {
-            return rtrim($line);
-        }, $lines);
-
-        return rtrim(implode("\n", $lines), "\n");
+        return output_comparator::matches($actual, $expected);
     }
 
     /**

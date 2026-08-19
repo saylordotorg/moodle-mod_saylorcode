@@ -756,3 +756,56 @@
 .saylorcode-embed-linkonly {
     margin: 1rem 0;
 }
+
+/* ---------------------------------------------------------------------------
+ * Authoring
+ *
+ * The Validate report on the activity settings form. Deliberately plain: it is
+ * a working tool for an author mid-edit, not part of the student experience.
+ * ------------------------------------------------------------------------ */
+
+.saylorcode-validate-summary {
+    margin: 0 0 0.4rem;
+    font-weight: 600;
+}
+
+.saylorcode-validate-compiler {
+    margin: 0 0 0.5rem;
+    padding: 0.5rem 0.6rem;
+    max-height: 12rem;
+    overflow: auto;
+    border-radius: 0.25rem;
+    background: #1e1e2e;
+    color: #e6e6ec;
+    font-family: var(--font-family-monospace, monospace);
+    font-size: 0.78rem;
+    white-space: pre-wrap;
+}
+
+.saylorcode-validate-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.saylorcode-validate-list li {
+    padding: 0.25rem 0 0.25rem 0.6rem;
+    border-left: 3px solid transparent;
+    margin-bottom: 0.25rem;
+    font-size: 0.85rem;
+}
+
+.saylorcode-validate-pass {
+    border-left-color: var(--success, #357a32);
+}
+
+.saylorcode-validate-fail {
+    border-left-color: var(--danger, #ca3120);
+}
+
+.saylorcode-validate-detail {
+    margin-top: 0.2rem;
+    font-family: var(--font-family-monospace, monospace);
+    font-size: 0.78rem;
+    opacity: 0.85;
+}

@@ -38,12 +38,19 @@ class backup_saylorcode_activity_structure_step extends backup_activity_structur
     protected function define_structure(): backup_nested_element {
         $userinfo = $this->get_setting_value('userinfo');
 
+        // Every column on the table belongs here. The list is enumerated rather
+        // than derived, so a column added later is silently dropped from every
+        // backup until someone remembers this file: that is how startercode,
+        // testcases, entryfilename and layout came to be missing, which would
+        // have restored courses with the exercise content emptied out.
+        // tests/backup_fields_test.php now fails if the two drift apart again.
         $saylorcode = new backup_nested_element('saylorcode', ['id'], [
             'name', 'intro', 'introformat', 'activitymode', 'stableid',
-            'versionpolicy', 'pinnedversion', 'profileid', 'maxattempts',
-            'gradingmode', 'allowhints', 'allowsolution', 'allowdownload',
-            'grade', 'completionpasstests', 'completionminscore',
-            'timecreated', 'timemodified',
+            'versionpolicy', 'pinnedversion', 'profileid', 'layout',
+            'entryfilename', 'startercode', 'referencesolution', 'testcases',
+            'maxattempts', 'gradingmode', 'allowhints', 'allowsolution',
+            'allowdownload', 'grade', 'completionpasstests',
+            'completionminscore', 'timecreated', 'timemodified',
         ]);
 
         $steps = new backup_nested_element('steps');
