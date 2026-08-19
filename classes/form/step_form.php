@@ -145,8 +145,13 @@ class step_form extends moodleform {
         // A pinned step with no version resolves as a broken pin and quietly
         // falls back to the activity's content, so it is refused here where an
         // author can still see why.
+        //
+        // Only while the step still names an exercise: both version controls
+        // are hidden once the reference is cleared, and an error on a field
+        // nobody can see would trap the author with no way to save.
         if (
-            ($data['versionpolicy'] ?? '') === exercise_resolver::POLICY_PINNED
+            $stableid !== ''
+                && ($data['versionpolicy'] ?? '') === exercise_resolver::POLICY_PINNED
                 && (int) ($data['pinnedversion'] ?? 0) < 1
         ) {
             $errors['pinnedversion'] = get_string('steppinnedversionrequired', 'mod_saylorcode');
