@@ -69,6 +69,7 @@ class run_code extends external_api {
      * @param string $files JSON file map.
      * @param string $stdin Standard input.
      * @param string $browsersession Writing browser session.
+     * @param int $stepid Step this action belongs to, or 0 outside a guided lesson.
      * @return array
      */
     public static function execute(
