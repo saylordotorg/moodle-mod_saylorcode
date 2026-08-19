@@ -17,12 +17,12 @@ Feature: Working in a Saylor Code Studio activity
       | student1 | C1     | student        |
       | teacher1 | C1     | editingteacher |
     And the following "activities" exist:
-      | activity   | name            | course | idnumber | stableid      | startercode          |
-      | saylorcode | Double a number | C1     | scs1     | CS101-U01-E01 | public class Main {} |
+      | activity   | name            | course | idnumber | stableid      | startercode          | testcases                                                       |
+      | saylorcode | Double a number | C1     | scs1     | CS101-U01-E01 | public class Main {} | [{"id":"T1","name":"Prints","expected":"ok","ispublic":true}]   |
 
-  Scenario: A student opens the workspace and sees the starter code
+  Scenario: A student opens the workspace and sees the file they are editing
     Given I am on the "Double a number" "saylorcode activity" page logged in as "student1"
-    Then I should see "Instructions"
+    Then I should see "Main.java"
     And I should see "Console"
     And the field with xpath "//textarea[@data-region='editor']" matches value "public class Main {}"
 
@@ -33,26 +33,31 @@ Feature: Working in a Saylor Code Studio activity
     And "Submit" "button" should exist
     And "Reset" "button" should exist
 
+  Scenario: The workspace reports its state before anything has run
+    Given I am on the "Double a number" "saylorcode activity" page logged in as "student1"
+    Then I should see "Ready"
+    And I should see "Output from your program appears here when you run it."
+
   Scenario: A teacher can see the activity in the course
     Given I am on "Course 1" course homepage logged in as "teacher1"
     Then I should see "Double a number"
 
   Scenario: An exercise reference must be well formed
-    Given I am on the "Course 1" course page logged in as "teacher1"
-    When I add a "Saylor Code Studio" activity to course "Course 1" section "1" and I fill the form with:
+    Given I log in as "teacher1"
+    When I add a "saylorcode" activity to course "Course 1" section "1" and I fill the form with:
       | Name               | Broken reference |
       | Exercise stable ID | NOTANID          |
     Then I should see "This is not a valid exercise ID"
 
   Scenario: Test cases must be valid JSON
-    Given I am on the "Course 1" course page logged in as "teacher1"
-    When I add a "Saylor Code Studio" activity to course "Course 1" section "1" and I fill the form with:
+    Given I log in as "teacher1"
+    When I add a "saylorcode" activity to course "Course 1" section "1" and I fill the form with:
       | Name               | Broken tests    |
       | Exercise stable ID | CS101-U01-E02   |
       | Test cases         | not json at all |
     Then I should see "Test cases must be a JSON array"
 
-  @javascript
+  @accessibility @javascript
   Scenario: The workspace meets accessibility standards
     Given I am on the "Double a number" "saylorcode activity" page logged in as "student1"
     Then the page should meet accessibility standards
