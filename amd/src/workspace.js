@@ -171,12 +171,37 @@ class Workspace {
             tab.addEventListener('keydown', (e) => this.handleTabKeys(e));
         });
 
+        // A guided lesson changes steps without reloading, so it asks the
+        // workspace to show different code rather than touching the editor.
+        document.addEventListener('saylorcode:setcode', (e) => {
+            if (this.code && typeof e.detail.code === 'string') {
+                this.code.setValue(e.detail.code);
+                this.lastSavedValue = e.detail.code;
+                this.dirty = false;
+                this.setSaveState('saved');
+            }
+        });
+
         window.addEventListener('beforeunload', (e) => {
             if (this.dirty) {
                 e.preventDefault();
                 e.returnValue = '';
             }
         });
+    }
+
+    /**
+     * The step the student is working on, or 0 outside a guided lesson.
+     *
+     * Read from the guided panel rather than held here, so the panel stays the
+     * single owner of which step is open and the two cannot disagree.
+     *
+     * @returns {number} The step id.
+     */
+    currentStepId() {
+        const panel = document.querySelector('[data-region="saylorcode-guided"]');
+
+        return panel ? parseInt(panel.dataset.currentstepid, 10) || 0 : 0;
     }
 
     /**
@@ -505,12 +530,21 @@ class Workspace {
                 files: JSON.stringify(this.getFiles()),
                 stdin: this.stdin ? this.stdin.value : '',
                 browsersession: this.browserSession,
+                stepid: this.currentStepId(),
             },
         }])[0].then((result) => {
             this.lastSavedValue = this.code ? this.code.getValue() : '';
             this.dirty = false;
             this.setSaveState('saved');
             this.renderResult(result, mode);
+
+            // A guided lesson listens for this to move its panel on. The
+            // workspace deliberately knows nothing about how that is drawn.
+            if (result.step) {
+                document.dispatchEvent(new CustomEvent('saylorcode:stepprogress', {
+                    detail: result.step,
+                }));
+            }
             return result;
         }).catch((error) => {
             this.setStatus('error');

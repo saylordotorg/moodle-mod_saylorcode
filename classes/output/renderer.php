@@ -17,6 +17,8 @@
 namespace mod_saylorcode\output;
 
 use context_module;
+use mod_saylorcode\local\attempt_manager;
+use mod_saylorcode\local\step_manager;
 use cm_info;
 use plugin_renderer_base;
 use stdClass;
@@ -43,102 +45,89 @@ class renderer extends plugin_renderer_base {
      * @return string HTML.
      */
     public function render_activity(stdClass $moduleinstance, cm_info $cm, context_module $context): string {
-        return $this->render_shell($moduleinstance, $cm, $context, false);
+        $steps = new step_manager($moduleinstance);
+
+        if (!$steps->is_guided()) {
+            return $this->render_shell($moduleinstance, $cm, $context, false);
+        }
+
+        return $this->render_guided($moduleinstance, $cm, $context, $steps);
     }
 
     /**
-     * Render the workspace as an author preview.
+     * Render a guided lesson: the step panel above the workspace.
      *
-     * The same template as the real activity, because a preview that renders
-     * through a different path stops being evidence of anything. What differs
-     * is that nothing is persisted and the controls are inert: staff do not
-     * hold mod/saylorcode:attempt, so wiring them up would only produce
-     * permission errors. Whether the exercise actually passes its own tests is
-     * what Validate answers; this answers what the student will see.
+     * The workspace itself is unchanged, because a guided lesson is the same
+     * editor with a smaller question in front of it. Sharing it means a fix to
+     * one is a fix to both.
      *
      * @param stdClass $moduleinstance The activity instance.
      * @param cm_info $cm The course module.
      * @param context_module $context The module context.
+     * @param step_manager $steps The sequencer.
      * @return string HTML.
      */
-    public function render_preview(stdClass $moduleinstance, cm_info $cm, context_module $context): string {
-        return $this->render_shell($moduleinstance, $cm, $context, true);
-    }
-
-    /**
-     * Build and render the workspace shell.
-     *
-     * @param stdClass $moduleinstance The activity instance.
-     * @param cm_info $cm The course module.
-     * @param context_module $context The module context.
-     * @param bool $preview Whether this is an author preview.
-     * @return string HTML.
-     */
-    protected function render_shell(
+    protected function render_guided(
         stdClass $moduleinstance,
         cm_info $cm,
         context_module $context,
-        bool $preview
+        step_manager $steps
     ): string {
         global $USER;
 
-        // In a preview the viewer is staff, who have no attempt of their own
-        // and must not be given one. Treating them as able to attempt is what
-        // makes the editor and the action bar render at all.
-        $canattempt = $preview || has_capability('mod/saylorcode:attempt', $context);
-
-        // Seed the editor server side. The student sees their own code in the
-        // initial HTML rather than after a round trip, so a slow connection
-        // shows work-in-progress rather than an empty box.
-        $entryfilename = $moduleinstance->entryfilename ?? 'Main.java';
-        $initialcode = '';
-
-        if ($preview) {
-            // The starter code is what a student meets on first opening, which
-            // is the state a preview is for.
-            $initialcode = (string) ($moduleinstance->startercode ?? '');
-        } else if ($canattempt) {
-            $manager = new \mod_saylorcode\local\attempt_manager($moduleinstance);
-            $attempt = $manager->get_or_create_attempt((int) $USER->id);
-            $files = $manager->get_current_files($attempt);
-            $initialcode = (string) ($files[$entryfilename] ?? reset($files));
+        if (!has_capability('mod/saylorcode:attempt', $context)) {
+            // Staff see the workspace and its permission notice, the same
+            // bargain the ordinary activity strikes. A step panel driven by an
+            // attempt they do not have would say nothing true.
+            return $this->render_shell($moduleinstance, $cm, $context, false);
         }
 
-        // Show the language by its student facing name rather than the profile
-        // id, which is an internal handle and means nothing to a learner.
-        $profile = (new \local_saylorcode\local\runtime\profile_manager())
-            ->get_profile($moduleinstance->profileid);
-        $runtimename = $profile ? $profile->get_display_name() : $moduleinstance->profileid;
+        $manager = new attempt_manager($moduleinstance);
+        $attempt = $manager->get_or_create_attempt((int) $USER->id);
+        $attemptid = (int) $attempt->id;
 
-        $layout = $moduleinstance->layout ?? 'split';
+        $current = $steps->get_current_step($attemptid);
+        $progress = $steps->get_progress($attemptid);
+        $stepattempts = $steps->get_step_attempts($attemptid);
 
-        $data = [
+        $list = [];
+        $number = 0;
+        foreach ($steps->get_steps() as $step) {
+            $number++;
+            $stepattempt = $stepattempts[(int) $step->id] ?? null;
+
+            $list[] = [
+                'id' => (int) $step->id,
+                'number' => $number,
+                'title' => format_string($step->title),
+                'iscurrent' => $current !== null && (int) $step->id === (int) $current->id,
+                'iscomplete' => $stepattempt !== null
+                    && $stepattempt->status === step_manager::STATUS_COMPLETE,
+                'islocked' => !$steps->can_open_step($attemptid, (int) $step->id),
+            ];
+        }
+
+        $panel = $this->render_from_template('mod_saylorcode/guided_panel', [
             'cmid' => $cm->id,
-            'instanceid' => $moduleinstance->id,
-            'activitymode' => $moduleinstance->activitymode,
-            'stableid' => $moduleinstance->stableid,
-            'profileid' => $moduleinstance->profileid,
-            'runtimename' => $runtimename,
-            'entryfilename' => $entryfilename,
-            'initialcode' => $initialcode,
-            'hastests' => self::has_tests($moduleinstance),
-            'layout' => $layout,
-            'isdrawer' => $layout === 'drawer',
-            'istabs' => $layout === 'tabs',
-            'expected' => $this->expected_lines($moduleinstance),
-            // A playground is deliberately ungraded, so it has nothing to
-            // submit. Every other mode records an official attempt, which
-            // drives completion and grading whether or not tests exist.
-            'cansubmit' => ($moduleinstance->activitymode ?? '') !== 'playground',
-            'canattempt' => $canattempt,
-            'allowhints' => !empty($moduleinstance->allowhints),
-            'allowdownload' => !empty($moduleinstance->allowdownload),
-            'nopermission' => $canattempt ? null : get_string('nopermissiontoattempt', 'mod_saylorcode'),
-            'preview' => $preview,
-        ];
+            'currentstepid' => $current ? (int) $current->id : 0,
+            'title' => $current ? format_string($current->title) : '',
+            'instructions' => $current
+                ? format_text(
+                    (string) $current->instructions,
+                    (int) $current->instructionsformat,
+                    ['context' => $context]
+                )
+                : '',
+            'completionhint' => $current ? step_manager::completion_hint($current) : '',
+            'stepscomplete' => $progress['complete'],
+            'stepstotal' => $progress['total'],
+            'percent' => $progress['percent'],
+            'steps' => $list,
+        ]);
 
-        return $this->render_from_template('mod_saylorcode/activity_shell', $data);
+        return $panel . $this->render_shell($moduleinstance, $cm, $context, false);
     }
+
     /**
      * The expected output shown on the feedback tab.
      *

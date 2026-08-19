@@ -24,6 +24,7 @@ use core_external\external_value;
 use local_saylorcode\local\runner\execution_request;
 use mod_saylorcode\local\attempt_manager;
 use mod_saylorcode\local\execution_service;
+use mod_saylorcode\local\step_manager;
 use mod_saylorcode\local\workspace_context;
 
 /**
@@ -51,6 +52,12 @@ class run_code extends external_api {
                 VALUE_DEFAULT,
                 ''
             ),
+            'stepid' => new external_value(
+                PARAM_INT,
+                'Step this action belongs to, in a guided lesson',
+                VALUE_DEFAULT,
+                0
+            ),
         ]);
     }
 
@@ -69,7 +76,8 @@ class run_code extends external_api {
         string $mode,
         string $files,
         string $stdin = '',
-        string $browsersession = ''
+        string $browsersession = '',
+        int $stepid = 0
     ): array {
         [
             'cmid' => $cmid,
@@ -77,12 +85,14 @@ class run_code extends external_api {
             'files' => $files,
             'stdin' => $stdin,
             'browsersession' => $browsersession,
+            'stepid' => $stepid,
         ] = self::validate_parameters(self::execute_parameters(), [
             'cmid' => $cmid,
             'mode' => $mode,
             'files' => $files,
             'stdin' => $stdin,
             'browsersession' => $browsersession,
+            'stepid' => $stepid,
         ]);
 
         global $USER;
@@ -130,7 +140,7 @@ class run_code extends external_api {
             $result['state']
         )->trigger();
 
-        return [
+        $payload = [
             'state' => $result['state'],
             'message' => $result['message'],
             'stdout' => $result['stdout'],
@@ -150,6 +160,16 @@ class run_code extends external_api {
                 ];
             }, $result['tests']),
         ];
+
+        // Present only for a guided lesson. The key is declared VALUE_OPTIONAL,
+        // which means absent rather than null: a null would fail the return
+        // description, since the structure itself is not nullable.
+        $step = self::record_step_action($workspace->instance, $attempt, $stepid, $mode, $result);
+        if ($step !== null) {
+            $payload['step'] = $step;
+        }
+
+        return $payload;
     }
 
     /**
@@ -184,6 +204,15 @@ class run_code extends external_api {
      */
     public static function execute_returns(): external_single_structure {
         return new external_single_structure([
+            'step' => new external_single_structure([
+                'stepid' => new external_value(PARAM_INT, 'The step this action was recorded against'),
+                'status' => new external_value(PARAM_ALPHA, 'Step status after the action'),
+                'complete' => new external_value(PARAM_BOOL, 'Whether the step is now complete'),
+                'currentstepid' => new external_value(PARAM_INT, 'The step the student should be on now'),
+                'stepscomplete' => new external_value(PARAM_INT, 'Steps completed'),
+                'stepstotal' => new external_value(PARAM_INT, 'Steps in the lesson'),
+                'percent' => new external_value(PARAM_INT, 'Percentage of the lesson complete'),
+            ], 'Guided lesson progress, absent outside a guided lesson', VALUE_OPTIONAL),
             'state' => new external_value(PARAM_ALPHAEXT, 'Canonical execution state'),
             'message' => new external_value(PARAM_TEXT, 'Plain language description of the state'),
             'stdout' => new external_value(PARAM_RAW, 'Program output'),
@@ -204,5 +233,73 @@ class run_code extends external_api {
                 'Test results, with hidden tests reduced to an outcome'
             ),
         ]);
+    }
+
+    /**
+     * Record this action against a guided lesson step.
+     *
+     * Returns null for an activity that is not a guided lesson, or when the
+     * caller named a step the student may not be working on. A wrong step id
+     * is not an error the student should see: their code still ran, and the
+     * only consequence is that no progress was recorded.
+     *
+     * @param \stdClass $instance The activity.
+     * @param \stdClass $attempt The attempt.
+     * @param int $stepid The step the action belongs to, or 0.
+     * @param string $mode run, check or submit.
+     * @param array $result The execution result.
+     * @return array|null Step progress for the interface, or null.
+     */
+    protected static function record_step_action(
+        \stdClass $instance,
+        \stdClass $attempt,
+        int $stepid,
+        string $mode,
+        array $result
+    ): ?array {
+        if ($stepid <= 0) {
+            return null;
+        }
+
+        $steps = new step_manager($instance);
+
+        if (!$steps->is_guided() || !$steps->can_open_step((int) $attempt->id, $stepid)) {
+            return null;
+        }
+
+        $step = $steps->get_steps()[$stepid];
+        $stepattempt = $steps->get_or_create_step_attempt((int) $attempt->id, $stepid);
+
+        // Whether the step was passed is only meaningful where tests ran. A
+        // plain run says nothing about correctness, so it reports null rather
+        // than false, which would read as "the student got it wrong".
+        $passed = null;
+        if ($mode !== execution_request::MODE_RUN && $result['tests']) {
+            $passed = true;
+            foreach ($result['tests'] as $test) {
+                $passed = $passed && !empty($test['passed']);
+            }
+        }
+
+        $stepattempt = $steps->record_action(
+            $step,
+            $stepattempt,
+            $mode,
+            $passed,
+            $result['score'] === null ? null : (float) $result['score']
+        );
+
+        $progress = $steps->get_progress((int) $attempt->id);
+        $current = $steps->get_current_step((int) $attempt->id);
+
+        return [
+            'stepid' => (int) $step->id,
+            'status' => $stepattempt->status,
+            'complete' => $stepattempt->status === step_manager::STATUS_COMPLETE,
+            'currentstepid' => $current ? (int) $current->id : 0,
+            'stepscomplete' => $progress['complete'],
+            'stepstotal' => $progress['total'],
+            'percent' => $progress['percent'],
+        ];
     }
 }
