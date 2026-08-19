@@ -298,7 +298,12 @@ class mod_saylorcode_mod_form extends moodleform_mod {
             return $data;
         }
 
-        $data->testcases = json_encode(self::rows_to_cases($data));
+        $cases = self::rows_to_cases($data);
+
+        // Store nothing rather than "[]" for an empty list. The string "[]" is
+        // not empty, so anything testing the column for emptiness would decide
+        // the activity has tests and offer Check with nothing to check.
+        $data->testcases = $cases ? json_encode($cases) : '';
 
         return $data;
     }
@@ -404,12 +409,19 @@ class mod_saylorcode_mod_form extends moodleform_mod {
         // never what an author means.
         foreach ((array) ($data['tcexpected'] ?? []) as $i => $expected) {
             $named = trim((string) ($data['tcname'][$i] ?? '')) !== '';
-            if (!$named) {
+            $hasexpected = trim((string) $expected) !== '';
+
+            // Active means the same thing here as it does in rows_to_cases():
+            // a row with either a name or expected output is saved, so a row
+            // with only expected output must be validated too.
+            if (!$named && !$hasexpected) {
                 continue;
             }
-            if (trim((string) $expected) === '') {
+
+            if (!$hasexpected) {
                 $errors['tcexpected[' . $i . ']'] = get_string('tcexpectedrequired', 'mod_saylorcode');
             }
+
             if ((float) ($data['tcweight'][$i] ?? 1) <= 0) {
                 $errors['tcweight[' . $i . ']'] = get_string('tcweightpositive', 'mod_saylorcode');
             }
