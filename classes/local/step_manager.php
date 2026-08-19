@@ -107,7 +107,7 @@ class step_manager {
         $existing = $DB->get_record('saylorcode_stepattempts', ['attemptid' => $attemptid, 'stepid' => $stepid]);
 
         if ($existing) {
-            return $existing;
+            return $this->apply_arrival($existing, $stepid);
         }
 
         $record = (object) [
@@ -127,7 +127,47 @@ class step_manager {
         // Re-read rather than trusting the object we built. Defaults declared
         // in install.xml are applied by the database, and code downstream that
         // reads a column we did not set would otherwise see null.
-        return $DB->get_record('saylorcode_stepattempts', ['id' => $record->id], '*', MUST_EXIST);
+        $record = $DB->get_record('saylorcode_stepattempts', ['id' => $record->id], '*', MUST_EXIST);
+
+        return $this->apply_arrival($record, $stepid);
+    }
+
+    /**
+     * Complete a step that its own rule satisfies on arrival.
+     *
+     * An instruction step asks the student to read something, so opening it is
+     * the whole requirement. Without this the step is stored as in progress and
+     * nothing ever moves it on: record_action() only fires for run, check and
+     * submit, and a lesson that opens with an instruction step could not be
+     * finished at all.
+     *
+     * Applied on every read rather than only on creation, so it is idempotent
+     * and no caller can skip it by fetching an existing row.
+     *
+     * @param stdClass $stepattempt The step attempt.
+     * @param int $stepid The step it belongs to.
+     * @return stdClass The step attempt, completed where the rule allows.
+     */
+    protected function apply_arrival(stdClass $stepattempt, int $stepid): stdClass {
+        global $DB;
+
+        if ($stepattempt->status === self::STATUS_COMPLETE) {
+            return $stepattempt;
+        }
+
+        $steps = $this->get_steps();
+        $step = $steps[$stepid] ?? null;
+
+        if ($step === null || !$this->rule_satisfied($step, $stepattempt)) {
+            return $stepattempt;
+        }
+
+        $stepattempt->status = self::STATUS_COMPLETE;
+        $stepattempt->timecompleted = time();
+        $stepattempt->timemodified = time();
+        $DB->update_record('saylorcode_stepattempts', $stepattempt);
+
+        return $stepattempt;
     }
 
     /**

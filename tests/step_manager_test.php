@@ -114,13 +114,59 @@ final class step_manager_test extends \advanced_testcase {
     }
 
     /**
-     * A view rule is satisfied by arriving.
+     * A view rule is satisfied by arriving, and the arrival is recorded.
+     *
+     * Asserting only that the rule is satisfied is not enough: everything
+     * downstream reads the stored status, so a step left in progress would
+     * stall the lesson even though the rule says otherwise.
      */
     public function test_a_view_step_completes_on_arrival(): void {
+        global $DB;
+
         $step = $this->add_step(['completionrule' => step_manager::RULE_VIEW]);
         $stepattempt = $this->manager->get_or_create_step_attempt($this->attemptid, (int) $step->id);
 
         $this->assertTrue($this->manager->rule_satisfied($step, $stepattempt));
+        $this->assertSame(step_manager::STATUS_COMPLETE, $stepattempt->status);
+
+        $stored = $DB->get_record('saylorcode_stepattempts', ['id' => $stepattempt->id], '*', MUST_EXIST);
+        $this->assertSame(step_manager::STATUS_COMPLETE, $stored->status);
+        $this->assertNotEmpty($stored->timecompleted);
+    }
+
+    /**
+     * A lesson made only of instruction steps can be finished by reading it.
+     *
+     * This is the case the arrival rule exists for. Without it the first step
+     * stays current for ever and the lesson has no way to end.
+     */
+    public function test_an_instruction_only_lesson_can_be_completed(): void {
+        $one = $this->add_step(['completionrule' => step_manager::RULE_VIEW, 'steptype' => 'instruction']);
+        $two = $this->add_step(['completionrule' => step_manager::RULE_VIEW, 'steptype' => 'instruction']);
+
+        $this->manager->get_or_create_step_attempt($this->attemptid, (int) $one->id);
+        $this->assertSame((int) $two->id, (int) $this->manager->get_current_step($this->attemptid)->id);
+
+        $this->manager->get_or_create_step_attempt($this->attemptid, (int) $two->id);
+        $this->assertSame(100, $this->manager->get_progress($this->attemptid)['percent']);
+    }
+
+    /**
+     * Arriving does not complete a step that asks for work.
+     */
+    public function test_arrival_does_not_complete_a_step_that_wants_work(): void {
+        $run = $this->add_step(['completionrule' => step_manager::RULE_RUN]);
+        $tests = $this->add_step(['completionrule' => step_manager::RULE_PASSTESTS]);
+        $submit = $this->add_step(['completionrule' => step_manager::RULE_SUBMIT]);
+
+        foreach ([$run, $tests, $submit] as $step) {
+            $stepattempt = $this->manager->get_or_create_step_attempt($this->attemptid, (int) $step->id);
+            $this->assertSame(
+                step_manager::STATUS_INPROGRESS,
+                $stepattempt->status,
+                'Rule ' . $step->completionrule . ' should not be satisfied by arriving.'
+            );
+        }
     }
 
     /**
