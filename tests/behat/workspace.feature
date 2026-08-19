@@ -24,7 +24,10 @@ Feature: Working in a Saylor Code Studio activity
     Given I am on the "Double a number" "saylorcode activity" page logged in as "student1"
     Then I should see "Main.java"
     And I should see "Console"
-    And the field with xpath "//textarea[@data-region='editor']" matches value "public class Main {}"
+    # Read from the DOM rather than as a form field: the editor deliberately
+    # sits outside a form, and the driver cannot read a field with no form
+    # ancestor.
+    And "//textarea[@data-region='editor'][contains(text(),'public class Main')]" "xpath_element" should exist
 
   Scenario: The workspace offers the student actions
     Given I am on the "Double a number" "saylorcode activity" page logged in as "student1"
@@ -39,7 +42,7 @@ Feature: Working in a Saylor Code Studio activity
     And I should see "Output from your program appears here when you run it."
 
   Scenario: A teacher can see the activity in the course
-    Given I am on "Course 1" course homepage logged in as "teacher1"
+    Given I am on the "C1" "course" page logged in as "teacher1"
     Then I should see "Double a number"
 
   Scenario: An exercise reference must be well formed
