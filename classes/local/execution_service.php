@@ -412,6 +412,10 @@ class execution_service {
             $rows[] = (object) [
                 'executionid' => $executionid,
                 'saylorcodeid' => $this->instance->id,
+                // The identity a report groups on. The name is a label: two
+                // steps may legitimately use the same one.
+                'caseid' => \core_text::substr($result->get_test_id(), 0, 64),
+                'stepid' => $this->step->id ?? null,
                 'testname' => \core_text::substr($result->get_name(), 0, 255),
                 'passed' => $result->has_passed() ? 1 : 0,
                 'ispublic' => $result->is_public() ? 1 : 0,

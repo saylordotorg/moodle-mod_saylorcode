@@ -269,13 +269,24 @@ class progress_report {
     public function get_failed_tests(int $limit = 5): array {
         global $DB;
 
-        $sql = "SELECT testname,
+        // Grouped on the author's case identity, not the display name. Two
+        // steps of a guided lesson may use the same name for different cases,
+        // and the form does not stop them; merging those would report one
+        // combined failure rate for two unrelated cases. Rows written before
+        // the identity existed have no caseid, and fall back to the name.
+        //
+        // MIN(ispublic) rather than MAX: if anything in a group is hidden the
+        // whole row is treated as hidden, so a naming collision can never
+        // promote a hidden case into the visible report.
+        $sql = "SELECT MIN(id) AS id,
+                       MAX(testname) AS testname,
                        COUNT(1) AS runs,
                        SUM(CASE WHEN passed = 0 THEN 1 ELSE 0 END) AS failures,
-                       MAX(ispublic) AS ispublic
+                       MIN(ispublic) AS ispublic
                   FROM {saylorcode_testresults}
                  WHERE saylorcodeid = :id
-              GROUP BY testname
+              GROUP BY COALESCE(stepid, 0),
+                       COALESCE(NULLIF(caseid, ''), testname)
                 HAVING SUM(CASE WHEN passed = 0 THEN 1 ELSE 0 END) > 0
               ORDER BY failures DESC";
 
