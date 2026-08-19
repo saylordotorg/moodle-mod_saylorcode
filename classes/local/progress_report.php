@@ -77,6 +77,7 @@ class progress_report {
 
         $fields = 'u.id, u.id AS userid' . $userfields->selects . ', '
             . 'a.id AS attemptid, a.status, a.score, a.timestarted, a.timemodified, a.timesubmitted, '
+            . 'a.hintsused, a.solutionviewed, '
             . 'COALESCE(x.runs, 0) AS runs, '
             . 'COALESCE(x.checks, 0) AS checks, '
             . 'COALESCE(x.submits, 0) AS submits, '
@@ -313,14 +314,19 @@ class progress_report {
             $join->params
         );
 
-        $started = $DB->count_records_sql(
-            'SELECT COUNT(1) FROM {saylorcode_attempts} WHERE saylorcodeid = :id',
-            ['id' => $this->instance->id]
-        );
+        // Counted over the same people the table lists. Counting every attempt
+        // ever made would include students since unenrolled or suspended, and
+        // the headline could then say more had started than can attempt at all.
+        $countsql = "SELECT COUNT(1)
+                       FROM {user} u {$join->joins}
+                       JOIN {saylorcode_attempts} a ON a.userid = u.id AND a.saylorcodeid = :id";
+        $where = $join->wheres !== '' ? " WHERE {$join->wheres}" : '';
+
+        $started = $DB->count_records_sql($countsql . $where, $join->params + ['id' => $this->instance->id]);
 
         $submitted = $DB->count_records_sql(
-            'SELECT COUNT(1) FROM {saylorcode_attempts} WHERE saylorcodeid = :id AND timesubmitted IS NOT NULL',
-            ['id' => $this->instance->id]
+            $countsql . ($where !== '' ? $where . ' AND' : ' WHERE') . ' a.timesubmitted IS NOT NULL',
+            $join->params + ['id' => $this->instance->id]
         );
 
         return [

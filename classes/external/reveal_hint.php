@@ -68,6 +68,13 @@ class reveal_hint extends external_api {
         $hints = new hint_manager($workspace->instance);
 
         if ($what === 'solution') {
+            // A capability of its own, defined with no default archetypes, so
+            // that showing solutions is a decision somebody makes rather than
+            // something students have by virtue of being students. Checked here
+            // because hiding the button is not authorisation: this endpoint is
+            // callable directly.
+            require_capability('mod/saylorcode:viewsolutions', $workspace->context);
+
             // Refused rather than quietly returning nothing, so an author who
             // has turned the solution off can trust that it is off.
             if (!$hints->allows_solution()) {

@@ -54,6 +54,8 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
             'status' => 'privacy:metadata:attempts:status',
             'score' => 'privacy:metadata:attempts:score',
             'timestarted' => 'privacy:metadata:attempts:timestarted',
+            'hintsused' => 'privacy:metadata:attempts:hintsused',
+            'solutionviewed' => 'privacy:metadata:attempts:solutionviewed',
         ], 'privacy:metadata:attempts');
 
         $collection->add_database_table('saylorcode_stepattempts', [
@@ -163,6 +165,10 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
                     'status' => $attempt->status,
                     'score' => $attempt->score,
                     'timestarted' => transform::datetime($attempt->timestarted),
+                    // Exported because it is recorded about the student and
+                    // shown to their teacher, so they are entitled to see it.
+                    'hintsused' => $attempt->hintsused,
+                    'solutionviewed' => transform::yesno($attempt->solutionviewed),
                     'timesubmitted' => $attempt->timesubmitted ? transform::datetime($attempt->timesubmitted) : null,
                     'snapshots' => self::export_snapshots($attempt->id),
                 ];

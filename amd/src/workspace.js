@@ -234,50 +234,60 @@ class Workspace {
         return Ajax.call([{
             methodname: 'mod_saylorcode_reveal_hint',
             args: {cmid: this.cmid, what: what},
-        }])[0].then((result) => {
-            const list = panel.querySelector('[data-region="saylorcode-hintlist"]');
-            const status = panel.querySelector('[data-region="saylorcode-hintstatus"]');
+        }])[0].then((result) => this.showReveal(panel, result)).catch(Notification.exception);
+    }
 
-            if (!result.text) {
-                // Nothing left. Said in the status line rather than as an
-                // error, because asking again is a reasonable thing to do.
+    /**
+     * Put a revealed hint or solution on the page.
+     *
+     * Split out of reveal() so the string lookup is a step in one chain rather
+     * than a promise started inside another promise's handler.
+     *
+     * @param {HTMLElement} panel The hints panel.
+     * @param {Object} result The service response.
+     * @returns {Promise} Resolved once the panel is updated.
+     */
+    showReveal(panel, result) {
+        const list = panel.querySelector('[data-region="saylorcode-hintlist"]');
+        const status = panel.querySelector('[data-region="saylorcode-hintstatus"]');
+
+        if (!result.text) {
+            // Nothing left. Said in the status line rather than as an error,
+            // because asking again is a reasonable thing to have done.
+            return getString('hintnone', 'mod_saylorcode').then((text) => {
                 if (status) {
-                    return getString('hintnone', 'mod_saylorcode').then((text) => {
-                        status.textContent = text;
-
-                        return text;
-                    });
+                    status.textContent = text;
                 }
 
                 return result;
-            }
+            });
+        }
 
-            const item = document.createElement('li');
-            item.className = result.issolution ? 'saylorcode-hintitem saylorcode-solutionitem' : 'saylorcode-hintitem';
+        const item = document.createElement('li');
+        item.className = result.issolution ? 'saylorcode-hintitem saylorcode-solutionitem' : 'saylorcode-hintitem';
 
-            if (result.issolution) {
-                // The solution is code, so it keeps its shape.
-                const pre = document.createElement('pre');
-                pre.textContent = result.text;
-                item.appendChild(pre);
-            } else {
-                item.textContent = result.text;
-            }
+        if (result.issolution) {
+            // The solution is code, so it keeps its shape.
+            const pre = document.createElement('pre');
+            pre.textContent = result.text;
+            item.appendChild(pre);
+        } else {
+            item.textContent = result.text;
+        }
 
-            if (list) {
-                list.appendChild(item);
-            }
+        if (list) {
+            list.appendChild(item);
+        }
 
-            if (status && !result.issolution) {
-                return getString('hintnumbered', 'mod_saylorcode', {
-                    number: result.number,
-                    total: result.total,
-                }).then((text) => {
-                    status.textContent = text;
+        if (!status || result.issolution) {
+            return Promise.resolve(result);
+        }
 
-                    return text;
-                });
-            }
+        return getString('hintnumbered', 'mod_saylorcode', {
+            number: result.number,
+            total: result.total,
+        }).then((text) => {
+            status.textContent = text;
 
             return result;
         });

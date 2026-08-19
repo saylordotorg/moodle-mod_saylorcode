@@ -42,7 +42,28 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import {EditorState, EditorView, basicSetup, java, indentUnit} from 'mod_saylorcode/codemirror-lazy';
+import {EditorState, EditorView, basicSetup, java, indentUnit,
+    HighlightStyle, syntaxHighlighting, tags} from 'mod_saylorcode/codemirror-lazy';
+
+// Token colours as CSS custom properties rather than literals, so they
+// follow the editor's own light and dark surfaces. CodeMirror's default
+// palette is written for a light background and fails WCAG AA badly on the
+// dark one: its keyword purple measures 1.43:1 against our editor.
+const highlighting = HighlightStyle.define([
+    {tag: tags.keyword, color: 'var(--sc-tok-keyword)'},
+    {tag: [tags.name, tags.deleted, tags.character, tags.propertyName, tags.macroName],
+        color: 'var(--sc-tok-name)'},
+    {tag: [tags.function(tags.variableName), tags.labelName], color: 'var(--sc-tok-function)'},
+    {tag: [tags.color, tags.constant(tags.name), tags.standard(tags.name)], color: 'var(--sc-tok-constant)'},
+    {tag: [tags.typeName, tags.className, tags.changed, tags.annotation, tags.modifier,
+        tags.self, tags.namespace], color: 'var(--sc-tok-type)'},
+    {tag: [tags.operator, tags.operatorKeyword, tags.punctuation], color: 'var(--sc-tok-operator)'},
+    {tag: [tags.string, tags.inserted, tags.special(tags.string)], color: 'var(--sc-tok-string)'},
+    {tag: [tags.number, tags.bool, tags.null], color: 'var(--sc-tok-number)'},
+    {tag: [tags.comment, tags.lineComment, tags.blockComment], color: 'var(--sc-tok-comment)',
+        fontStyle: 'italic'},
+    {tag: tags.invalid, color: 'var(--sc-tok-invalid)'},
+]);
 
 /**
  * An editor backed by the plain textarea.
@@ -101,6 +122,7 @@ const richEditor = (textarea, ariaLabel) => {
                 // Java, which is the whole reason this bundle is vendored
                 // rather than borrowed from core.
                 java(),
+                syntaxHighlighting(highlighting),
 
                 // Four spaces, which is what the Java the students read uses.
                 indentUnit.of('    '),

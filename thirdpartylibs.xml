@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <libraries>
     <library>
-        <location>amd/src/codemirror-lazy.js</location>
+        <location>amd/build/codemirror-lazy.min.js</location>
         <name>CodeMirror 6</name>
         <description>The code editor behind the workspace, bundled with the Java grammar from
             @codemirror/legacy-modes. Moodle core ships CodeMirror for the TinyMCE HTML plugin, but

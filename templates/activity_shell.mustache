@@ -64,6 +64,7 @@
     * allowdownload bool Whether the download control is offered.
     * nopermission string|null Message shown when the viewer may not attempt.
     * preview bool Whether this is an author preview, where the controls do nothing.
+    * showhelp bool Whether either hints or the solution are on offer.
     * allowhints bool Whether this activity has hints to give.
     * allowsolution bool Whether the reference solution may be shown.
     * revealedhints array Hints the student has already taken, each with number and text.
@@ -88,6 +89,7 @@
         "allowdownload": true,
         "nopermission": null,
         "preview": false,
+        "showhelp": true,
         "allowhints": true,
         "allowsolution": false,
         "revealedhints": [{"number": 1, "text": "Look at the first line."}]
@@ -319,15 +321,16 @@
             <kbd class="saylorcode-kbd">{{#str}}runshortcut, mod_saylorcode{{/str}}</kbd>
         </span>
     </div>
-</div>
-{{#allowhints}}
+{{#showhelp}}
 <div class="saylorcode-hints" data-region="saylorcode-hints" data-cmid="{{cmid}}">
     <div class="saylorcode-hints-head">
         <h3 class="saylorcode-hints-title">{{#str}}hintsheading, mod_saylorcode{{/str}}</h3>
+        {{#allowhints}}
         <button type="button" class="saylorcode-btn saylorcode-btn-ghost" data-action="hint"
                 {{#preview}}disabled{{/preview}}>
             {{#str}}hinttake, mod_saylorcode{{/str}}
         </button>
+        {{/allowhints}}
         {{#allowsolution}}
         <button type="button" class="saylorcode-btn saylorcode-btn-ghost" data-action="solution"
                 {{#preview}}disabled{{/preview}}>
@@ -346,7 +349,8 @@
 
     <div class="saylorcode-hint-status" role="status" data-region="saylorcode-hintstatus"></div>
 </div>
-{{/allowhints}}
+{{/showhelp}}
+</div>
 {{/canattempt}}
 {{#js}}
 require(['mod_saylorcode/workspace'], function(Workspace) {

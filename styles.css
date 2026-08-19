@@ -46,6 +46,21 @@
     --sc-console-meta: rgba(230, 230, 236, 0.55);
     --sc-err: #ff9b7a;
     --sc-ok: #8fd694;
+
+    /* Syntax colours. Measured against the editor surface rather than taken
+       from CodeMirror's defaults, which are written for a light background:
+       its keyword purple came out at 1.43:1 on this one, against the 4.5:1
+       WCAG AA asks for. */
+    --sc-tok-keyword: #c3a6ff;
+    --sc-tok-name: #e6e6ec;
+    --sc-tok-function: #8fd0ff;
+    --sc-tok-constant: #ffc978;
+    --sc-tok-type: #7fe0c8;
+    --sc-tok-operator: #d0d0dc;
+    --sc-tok-string: #b5e58f;
+    --sc-tok-number: #ffc978;
+    --sc-tok-comment: #a2a2b8;
+    --sc-tok-invalid: #ff9b7a;
 }
 
 .saylorcode-shell {
@@ -60,6 +75,20 @@
 .saylorcode-shell.saylorcode-light {
     --sc-code-bg: #fbfbfd;
     --sc-code-fg: #1f2430;
+
+    /* The same tokens against the light surface. A single palette cannot clear
+       4.5:1 on both a near black and a near white background, so there are
+       two. */
+    --sc-tok-keyword: #6f42c1;
+    --sc-tok-name: #1f2430;
+    --sc-tok-function: #0b5ea8;
+    --sc-tok-constant: #8a4b00;
+    --sc-tok-type: #0a6e5e;
+    --sc-tok-operator: #3d4351;
+    --sc-tok-string: #2f6b18;
+    --sc-tok-number: #8a4b00;
+    --sc-tok-comment: #5c6270;
+    --sc-tok-invalid: #b3261e;
     --sc-gutter-fg: rgba(31, 36, 48, 0.4);
     --sc-gutter-bg: rgba(0, 0, 0, 0.03);
     --sc-code-rule: rgba(0, 0, 0, 0.09);

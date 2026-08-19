@@ -46,19 +46,21 @@ class progress_table extends table_sql {
 
         $this->define_baseurl($baseurl);
 
-        $this->define_columns(['fullname', 'status', 'score', 'attempts', 'failedchecks', 'lastrun']);
+        $this->define_columns(['fullname', 'status', 'score', 'attempts', 'failedchecks', 'help', 'lastrun']);
         $this->define_headers([
             get_string('reportstudent', 'mod_saylorcode'),
             get_string('reportstatus', 'mod_saylorcode'),
             get_string('reportscore', 'mod_saylorcode'),
             get_string('reportactivity', 'mod_saylorcode'),
             get_string('reportfailedchecks', 'mod_saylorcode'),
+            get_string('reporthelp', 'mod_saylorcode'),
             get_string('reportlastseen', 'mod_saylorcode'),
         ]);
 
         // Derived from three columns at once, so sorting it would sort on
         // something other than what is shown.
         $this->no_sorting('attempts');
+        $this->no_sorting('help');
 
         $this->sortable(true, 'lastrun', SORT_DESC);
         $this->collapsible(false);
@@ -162,6 +164,36 @@ class progress_table extends table_sql {
         }
 
         return (string) $failed;
+    }
+
+    /**
+     * What help the student took.
+     *
+     * The form tells authors this is shown to teachers, so it has to be.
+     *
+     * @param object $row A report row.
+     * @return string
+     */
+    public function col_help(object $row): string {
+        if ($row->attemptid === null) {
+            return html_writer::span('&mdash;', 'text-muted');
+        }
+
+        $parts = [];
+
+        if ((int) $row->hintsused > 0) {
+            $parts[] = get_string('reporthintstaken', 'mod_saylorcode', (int) $row->hintsused);
+        }
+
+        if (!empty($row->solutionviewed)) {
+            $parts[] = get_string('reportsawsolution', 'mod_saylorcode');
+        }
+
+        if (!$parts) {
+            return html_writer::span(get_string('reportnohelp', 'mod_saylorcode'), 'text-muted');
+        }
+
+        return implode(', ', $parts);
     }
 
     /**

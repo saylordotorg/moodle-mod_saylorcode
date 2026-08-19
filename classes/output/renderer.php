@@ -226,7 +226,13 @@ class renderer extends plugin_renderer_base {
             'cansubmit' => ($moduleinstance->activitymode ?? '') !== 'playground',
             'canattempt' => $canattempt,
             'allowhints' => $hints->has_hints(),
-            'allowsolution' => $hints->allows_solution(),
+            // Solutions have their own capability, deliberately granted to no
+            // archetype by default, so it is checked here as well as in the
+            // service that hands the solution over.
+            'allowsolution' => $hints->allows_solution()
+                && has_capability('mod/saylorcode:viewsolutions', $context),
+            'showhelp' => $hints->has_hints()
+                || ($hints->allows_solution() && has_capability('mod/saylorcode:viewsolutions', $context)),
             'revealedhints' => $canattempt && isset($attempt) ? $hints->get_revealed($attempt) : [],
             'allowdownload' => !empty($moduleinstance->allowdownload),
             'nopermission' => $canattempt ? null : get_string('nopermissiontoattempt', 'mod_saylorcode'),
