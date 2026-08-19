@@ -173,12 +173,9 @@ class progress_report {
      * Specification section 18.2 asks for more than this. Two of its measures
      * are deliberately absent rather than approximated:
      *
-     * Most frequently failed tests needs per test outcomes, and executions
-     * store only how many passed out of how many ran. Guessing which test
-     * failed from a count would be fiction.
-     *
-     * Results by exercise version needs versions, which arrive with the
-     * exercise library.
+     * Results by exercise version needs the attempt to record which version it
+     * was taken against, which the library makes possible but nothing writes
+     * yet.
      *
      * @return array
      */
@@ -253,6 +250,60 @@ class progress_report {
             'hintrate' => self::rate($usedhints, $totals['started']),
             'solutionrate' => self::rate($sawsolution, $totals['started']),
         ];
+    }
+
+    /**
+     * The test cases students fail most often.
+     *
+     * The measure that turns "this class is struggling" into "they are
+     * struggling with this". Counted from recorded per case outcomes rather
+     * than inferred from a passed-out-of-total figure, which cannot say which
+     * case it was.
+     *
+     * Hidden cases are included, named. A teacher needs to know a hidden case
+     * is the one everybody trips on, and this never reaches a student.
+     *
+     * @param int $limit How many to return.
+     * @return array Each with name, failures, attempts and rate.
+     */
+    public function get_failed_tests(int $limit = 5): array {
+        global $DB;
+
+        // Grouped on the author's case identity, not the display name. Two
+        // steps of a guided lesson may use the same name for different cases,
+        // and the form does not stop them; merging those would report one
+        // combined failure rate for two unrelated cases. Rows written before
+        // the identity existed have no caseid, and fall back to the name.
+        //
+        // MIN(ispublic) rather than MAX: if anything in a group is hidden the
+        // whole row is treated as hidden, so a naming collision can never
+        // promote a hidden case into the visible report.
+        $sql = "SELECT MIN(id) AS id,
+                       MAX(testname) AS testname,
+                       COUNT(1) AS runs,
+                       SUM(CASE WHEN passed = 0 THEN 1 ELSE 0 END) AS failures,
+                       MIN(ispublic) AS ispublic
+                  FROM {saylorcode_testresults}
+                 WHERE saylorcodeid = :id
+              GROUP BY COALESCE(stepid, 0),
+                       COALESCE(NULLIF(caseid, ''), testname)
+                HAVING SUM(CASE WHEN passed = 0 THEN 1 ELSE 0 END) > 0
+              ORDER BY failures DESC";
+
+        $rows = $DB->get_records_sql($sql, ['id' => $this->instance->id], 0, $limit);
+
+        $out = [];
+        foreach ($rows as $row) {
+            $out[] = [
+                'name' => $row->testname,
+                'failures' => (int) $row->failures,
+                'runs' => (int) $row->runs,
+                'ispublic' => !empty($row->ispublic),
+                'rate' => self::rate((int) $row->failures, (int) $row->runs),
+            ];
+        }
+
+        return $out;
     }
 
     /**

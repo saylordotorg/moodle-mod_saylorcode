@@ -174,5 +174,28 @@
         <INDEX NAME="timecreated" UNIQUE="false" FIELDS="timecreated"/>
       </INDEXES>
     </TABLE>
+    <TABLE NAME="saylorcode_testresults" COMMENT="Which test cases an execution passed, so a report can name the ones students fail.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="executionid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="saylorcodeid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Denormalised so a report can aggregate without joining every execution."/>
+        <FIELD NAME="caseid" TYPE="char" LENGTH="64" NOTNULL="false" SEQUENCE="false" COMMENT="The author's identifier for the case, such as T1. Reporting groups on this rather than the name, because two cases may share a display name."/>
+        <FIELD NAME="stepid" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="The guided step the case belongs to, null outside a guided lesson. Part of the case identity, since separate steps have separate exercises."/>
+        <FIELD NAME="testname" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" COMMENT="The case name as the author wrote it, kept as a label only. No student code and no expected value."/>
+        <FIELD NAME="passed" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="ispublic" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="executionid" TYPE="foreign" FIELDS="executionid" REFTABLE="saylorcode_executions" REFFIELDS="id"/>
+        <KEY NAME="saylorcodeid" TYPE="foreign" FIELDS="saylorcodeid" REFTABLE="saylorcode" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="saylorcodeid-passed" UNIQUE="false" FIELDS="saylorcodeid, passed"/>
+        <INDEX NAME="saylorcodeid-stepid-caseid" UNIQUE="false" FIELDS="saylorcodeid, stepid, caseid"/>
+      </INDEXES>
+    </TABLE>
+
   </TABLES>
 </XMLDB>

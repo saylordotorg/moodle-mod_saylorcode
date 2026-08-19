@@ -28,6 +28,7 @@ use core_privacy\local\request\plugin\provider as plugin_provider;
 use core_privacy\local\request\transform;
 use core_privacy\local\request\userlist;
 use core_privacy\local\request\writer;
+use mod_saylorcode\local\attempt_cleanup;
 
 /**
  * Privacy implementation for the Saylor Code Studio activity.
@@ -72,6 +73,12 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
             'state' => 'privacy:metadata:executions:state',
             'timecreated' => 'privacy:metadata:executions:timecreated',
         ], 'privacy:metadata:executions');
+
+        $collection->add_database_table('saylorcode_testresults', [
+            'testname' => 'privacy:metadata:testresults:testname',
+            'passed' => 'privacy:metadata:testresults:passed',
+            'timecreated' => 'privacy:metadata:testresults:timecreated',
+        ], 'privacy:metadata:testresults');
 
         // Source code leaves Moodle to be executed. The service layer declares
         // that transmission in detail.
@@ -171,6 +178,10 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
                     'solutionviewed' => transform::yesno($attempt->solutionviewed),
                     'timesubmitted' => $attempt->timesubmitted ? transform::datetime($attempt->timesubmitted) : null,
                     'snapshots' => self::export_snapshots($attempt->id),
+                    // Recorded about the student and shown to their teacher, on
+                    // the same footing as hints taken: if staff can see which
+                    // cases a student failed, the student can see it too.
+                    'testresults' => self::export_test_results($attempt->id),
                 ];
 
                 writer::with_context($context)->export_data(
@@ -182,7 +193,41 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
     }
 
     /**
-     * Build the snapshot list for one attempt.
+     * The per test outcomes recorded for one attempt.
+     *
+     * Only the name and the outcome, which is all the table holds. Expected and
+     * actual output are deliberately not stored anywhere reachable from here,
+     * so a hidden case cannot be reconstructed from an export.
+     *
+     * @param int $attemptid The attempt.
+     * @return array
+     */
+    protected static function export_test_results(int $attemptid): array {
+        global $DB;
+
+        $sql = "SELECT tr.id, tr.testname, tr.passed, tr.ispublic, tr.timecreated
+                  FROM {saylorcode_testresults} tr
+                  JOIN {saylorcode_executions} e ON e.id = tr.executionid
+                 WHERE e.attemptid = :attemptid
+              ORDER BY tr.timecreated ASC, tr.id ASC";
+
+        $results = $DB->get_records_sql($sql, ['attemptid' => $attemptid]);
+
+        $exported = [];
+        foreach ($results as $result) {
+            $exported[] = [
+                'test' => $result->testname,
+                'passed' => transform::yesno($result->passed),
+                'hidden' => transform::yesno(empty($result->ispublic)),
+                'timecreated' => transform::datetime($result->timecreated),
+            ];
+        }
+
+        return $exported;
+    }
+
+    /**
+     * The snapshots recorded for one attempt.
      *
      * @param int $attemptid The attempt.
      * @return array
@@ -307,15 +352,6 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
      * @param array $attemptids Attempt ids.
      */
     protected static function delete_attempt_children(array $attemptids): void {
-        global $DB;
-
-        if (empty($attemptids)) {
-            return;
-        }
-
-        [$insql, $params] = $DB->get_in_or_equal($attemptids);
-        $DB->delete_records_select('saylorcode_snapshots', "attemptid $insql", $params);
-        $DB->delete_records_select('saylorcode_stepattempts', "attemptid $insql", $params);
-        $DB->delete_records_select('saylorcode_executions', "attemptid $insql", $params);
+        attempt_cleanup::delete_for_attempts($attemptids);
     }
 }

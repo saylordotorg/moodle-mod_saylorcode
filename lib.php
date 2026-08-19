@@ -109,12 +109,7 @@ function saylorcode_delete_instance(int $id): bool {
     // Delete from the leaves inwards so that no orphan rows are left behind if
     // one of these calls fails part way through.
     $attemptids = $DB->get_fieldset_select('saylorcode_attempts', 'id', 'saylorcodeid = ?', [$id]);
-    if (!empty($attemptids)) {
-        [$insql, $params] = $DB->get_in_or_equal($attemptids);
-        $DB->delete_records_select('saylorcode_snapshots', "attemptid $insql", $params);
-        $DB->delete_records_select('saylorcode_stepattempts', "attemptid $insql", $params);
-        $DB->delete_records_select('saylorcode_executions', "attemptid $insql", $params);
-    }
+    \mod_saylorcode\local\attempt_cleanup::delete_for_attempts($attemptids);
 
     $DB->delete_records('saylorcode_attempts', ['saylorcodeid' => $id]);
     $DB->delete_records('saylorcode_steps', ['saylorcodeid' => $id]);
@@ -259,12 +254,7 @@ function saylorcode_reset_userdata(stdClass $data): array {
         [$insql, $params] = $DB->get_in_or_equal($instanceids);
         $attemptids = $DB->get_fieldset_select('saylorcode_attempts', 'id', "saylorcodeid $insql", $params);
 
-        if (!empty($attemptids)) {
-            [$attemptsql, $attemptparams] = $DB->get_in_or_equal($attemptids);
-            $DB->delete_records_select('saylorcode_snapshots', "attemptid $attemptsql", $attemptparams);
-            $DB->delete_records_select('saylorcode_stepattempts', "attemptid $attemptsql", $attemptparams);
-            $DB->delete_records_select('saylorcode_executions', "attemptid $attemptsql", $attemptparams);
-        }
+        \mod_saylorcode\local\attempt_cleanup::delete_for_attempts($attemptids);
 
         $DB->delete_records_select('saylorcode_attempts', "saylorcodeid $insql", $params);
     }

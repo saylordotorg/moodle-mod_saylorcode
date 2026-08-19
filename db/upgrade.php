@@ -100,5 +100,54 @@ function xmldb_saylorcode_upgrade($oldversion): bool {
         upgrade_mod_savepoint(true, 2026081903, 'saylorcode');
     }
 
+    if ($oldversion < 2026081908) {
+        $table = new xmldb_table('saylorcode_testresults');
+
+        if (!$dbman->table_exists($table)) {
+            $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+            $table->add_field('executionid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+            $table->add_field('saylorcodeid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+            $table->add_field('testname', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
+            $table->add_field('passed', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0');
+            $table->add_field('ispublic', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '1');
+            $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+            $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+            $table->add_key('executionid', XMLDB_KEY_FOREIGN, ['executionid'], 'saylorcode_executions', ['id']);
+            $table->add_key('saylorcodeid', XMLDB_KEY_FOREIGN, ['saylorcodeid'], 'saylorcode', ['id']);
+            $table->add_index('saylorcodeid-passed', XMLDB_INDEX_NOTUNIQUE, ['saylorcodeid', 'passed']);
+
+            $dbman->create_table($table);
+        }
+
+        upgrade_mod_savepoint(true, 2026081908, 'saylorcode');
+    }
+
+    if ($oldversion < 2026081909) {
+        // Reporting grouped on the display name, which merges two cases that
+        // happen to share one. In a guided lesson that is an ordinary thing for
+        // separate steps to do, and the merged row took the more permissive
+        // visibility of the two, so a hidden case could be reported as public.
+        // Grouping needs an identity the author cannot accidentally collide.
+        $table = new xmldb_table('saylorcode_testresults');
+
+        $caseid = new xmldb_field('caseid', XMLDB_TYPE_CHAR, '64', null, null, null, null, 'saylorcodeid');
+        if (!$dbman->field_exists($table, $caseid)) {
+            $dbman->add_field($table, $caseid);
+        }
+
+        $stepid = new xmldb_field('stepid', XMLDB_TYPE_INTEGER, '10', null, null, null, null, 'caseid');
+        if (!$dbman->field_exists($table, $stepid)) {
+            $dbman->add_field($table, $stepid);
+        }
+
+        $index = new xmldb_index('saylorcodeid-stepid-caseid', XMLDB_INDEX_NOTUNIQUE, ['saylorcodeid', 'stepid', 'caseid']);
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        upgrade_mod_savepoint(true, 2026081909, 'saylorcode');
+    }
+
     return true;
 }
