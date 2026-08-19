@@ -80,6 +80,10 @@ if (has_capability('mod/saylorcode:addinstance', $context)) {
             new moodle_url('/mod/saylorcode/preview.php', ['id' => $cm->id]),
             get_string('preview', 'mod_saylorcode'),
             ['class' => 'btn btn-secondary']
+        ) . ' ' . html_writer::link(
+            new moodle_url('/mod/saylorcode/steps.php', ['id' => $cm->id]),
+            get_string('managesteps', 'mod_saylorcode'),
+            ['class' => 'btn btn-secondary']
         ),
         'mb-3'
     );
