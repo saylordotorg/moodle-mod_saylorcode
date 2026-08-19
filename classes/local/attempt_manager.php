@@ -124,13 +124,20 @@ class attempt_manager {
     }
 
     /**
-     * The starter files defined on the activity.
+     * The starter files for this activity.
+     *
+     * Resolved rather than read off the instance, so an activity pointed at a
+     * published library exercise gets that exercise's code. Anything the
+     * library cannot answer falls back to the activity's own fields, which is
+     * what everything authored before the library does.
      *
      * @return array Relative path => contents.
      */
     public function get_starter_files(): array {
+        $content = content::for_instance($this->instance);
+
         return [
-            $this->instance->entryfilename => (string) ($this->instance->startercode ?? ''),
+            $content->get_entry_filename() => $content->get_starter_code(),
         ];
     }
 

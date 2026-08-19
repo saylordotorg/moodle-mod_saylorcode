@@ -371,8 +371,10 @@ class step_manager {
             return $carried;
         }
 
+        $content = content::for_step($this->instance, $step);
+
         return [
-            $this->instance->entryfilename => (string) ($this->instance->startercode ?? ''),
+            $content->get_entry_filename() => $content->get_starter_code(),
         ];
     }
 
@@ -437,8 +439,9 @@ class step_manager {
      * @return bool
      */
     protected function step_has_tests(stdClass $step): bool {
-        $decoded = json_decode((string) ($this->instance->testcases ?? ''), true);
-
-        return is_array($decoded) && !empty($decoded);
+        // A step referencing a library exercise is judged on that exercise's
+        // tests; one without falls back to the activity's, which is how every
+        // step written before the library works.
+        return content::for_step($this->instance, $step)->get_test_cases() !== [];
     }
 }

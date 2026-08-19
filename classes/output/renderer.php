@@ -18,6 +18,7 @@ namespace mod_saylorcode\output;
 
 use context_module;
 use mod_saylorcode\local\attempt_manager;
+use mod_saylorcode\local\content;
 use mod_saylorcode\local\step_manager;
 use cm_info;
 use plugin_renderer_base;
@@ -281,8 +282,6 @@ class renderer extends plugin_renderer_base {
      * @return bool
      */
     protected static function has_tests(stdClass $moduleinstance): bool {
-        $decoded = json_decode((string) ($moduleinstance->testcases ?? ''), true);
-
-        return is_array($decoded) && !empty($decoded);
+        return content::for_instance($moduleinstance)->get_test_cases() !== [];
     }
 }

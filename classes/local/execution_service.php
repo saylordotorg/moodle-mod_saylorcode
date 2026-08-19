@@ -246,6 +246,16 @@ class execution_service {
      * @return array
      */
     public function get_test_cases(): array {
+        // Resolved, so a student is checked against the same version of the
+        // exercise their starter code came from. Reading these off the instance
+        // while the code came from the library would grade one thing against
+        // another.
+        $cases = content::for_instance($this->instance)->get_test_cases();
+
+        if ($cases) {
+            return $cases;
+        }
+
         $raw = (string) ($this->instance->testcases ?? '');
         if (trim($raw) === '') {
             return [];
