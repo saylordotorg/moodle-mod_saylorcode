@@ -305,6 +305,13 @@ class mod_saylorcode_mod_form extends moodleform_mod {
         // the activity has tests and offer Check with nothing to check.
         $data->testcases = $cases ? json_encode($cases) : '';
 
+        // Same reasoning for the reference solution: a value of pure
+        // whitespace is not a solution, and storing it as one makes the
+        // catalogue call an unfinished exercise ready.
+        if (isset($data->referencesolution) && trim((string) $data->referencesolution) === '') {
+            $data->referencesolution = '';
+        }
+
         return $data;
     }
 

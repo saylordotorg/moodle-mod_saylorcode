@@ -155,8 +155,18 @@ export const init = () => {
         e.preventDefault();
 
         button.disabled = true;
+
+        // The status string and the validation run in parallel, and on an
+        // uncached page the string can arrive second. An immediate report,
+        // such as "no reference solution", would then be overwritten by
+        // "Running the reference solution..." and left there for good, with
+        // the button enabled again beneath it.
+        let reported = false;
+
         getString('validaterunning', 'mod_saylorcode').then((text) => {
-            target.textContent = text;
+            if (!reported) {
+                target.textContent = text;
+            }
             return text;
         }).catch(Notification.exception);
 
@@ -170,9 +180,11 @@ export const init = () => {
                 testcases: JSON.stringify(collectCases()),
             },
         }])[0].then((report) => {
+            reported = true;
             render(target, report);
             return report;
         }).catch((error) => {
+            reported = true;
             target.textContent = error.message || String(error);
         }).finally(() => {
             button.disabled = false;

@@ -209,6 +209,63 @@ final class catalogue_test extends \advanced_testcase {
     }
 
     /**
+     * The readiness filter and the readiness badge agree.
+     *
+     * They are two implementations of one idea, one in SQL and one in PHP, so
+     * nothing but a test stops them drifting. When they disagree the catalogue
+     * lists a row under Ready and then labels it "No tests" in the same table,
+     * which is worse than either answer alone.
+     */
+    public function test_the_filter_and_the_badge_agree(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        $course = $this->getDataGenerator()->create_course(['shortname' => 'CS101']);
+
+        // Every shape the column can hold, including the ones that read as
+        // present but describe nothing.
+        $shapes = [
+            'both' => ['testcases' => $this->two_cases(), 'referencesolution' => 'public class Main {}'],
+            'emptyarray' => ['testcases' => '[]', 'referencesolution' => 'public class Main {}'],
+            'notests' => ['testcases' => '', 'referencesolution' => 'public class Main {}'],
+            'nosolution' => ['testcases' => $this->two_cases(), 'referencesolution' => ''],
+            'neither' => ['testcases' => '', 'referencesolution' => ''],
+        ];
+
+        $expectedready = [];
+        foreach ($shapes as $name => $fields) {
+            $instance = $this->make_exercise($course, ['stableid' => 'CS101-U01-E01'] + $fields);
+            $record = $DB->get_record('saylorcode', ['id' => $instance->id], '*', MUST_EXIST);
+
+            if (catalogue::readiness($record) === 'ready') {
+                $expectedready[] = $name;
+            }
+        }
+
+        // What the SQL filter returns, named back to the shapes above.
+        [$fields, $from, $where, $params] = catalogue::build_query(['state' => 'ready']);
+        $found = $DB->get_records_sql("SELECT $fields FROM $from WHERE $where", $params);
+
+        $actualready = [];
+        foreach ($found as $record) {
+            foreach ($shapes as $name => $shape) {
+                if ($record->testcases === $shape['testcases']
+                        && $record->referencesolution === $shape['referencesolution']) {
+                    $actualready[] = $name;
+                    break;
+                }
+            }
+        }
+
+        sort($expectedready);
+        sort($actualready);
+
+        $this->assertSame(['both'], $expectedready, 'Only a tested exercise with a solution is ready.');
+        $this->assertSame($expectedready, $actualready, 'The Ready filter disagrees with the Ready badge.');
+    }
+
+    /**
      * The course menu lists only courses that hold an exercise.
      */
     public function test_the_course_menu_skips_empty_courses(): void {
