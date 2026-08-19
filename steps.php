@@ -195,9 +195,15 @@ if (!$steps) {
         $source = $resolved->get_source();
 
         if ($resolved->is_from_library()) {
+            // A step with no reference of its own inherits the activity's, so
+            // the label has to name that one rather than an empty string.
+            $reference = trim((string) $step->stableid) !== ''
+                ? $step->stableid
+                : $instance->stableid;
+
             $exercise = html_writer::span(
                 get_string('stepexerciseversion', 'mod_saylorcode', (object) [
-                    'stableid' => $step->stableid,
+                    'stableid' => $reference,
                     'version' => $resolved->get_version_number(),
                 ]),
                 'badge badge-success bg-success text-white'

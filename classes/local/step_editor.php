@@ -214,6 +214,10 @@ class step_editor {
             'instructionsformat' => $format,
             'stableid' => trim((string) ($data->stableid ?? '')) ?: null,
             'versionpolicy' => (string) ($data->versionpolicy ?? 'latest'),
+            // Without this a pinned step is stored with no version, resolves as
+            // a broken pin and quietly falls back to the activity's content,
+            // which is the failure the pin exists to prevent.
+            'pinnedversion' => (int) ($data->pinnedversion ?? 0) ?: null,
             'carryforward' => empty($data->carryforward) ? 0 : 1,
             'completionrule' => (string) ($data->completionrule ?? step_manager::RULE_PASSTESTS),
             'allowrevisit' => empty($data->allowrevisit) ? 0 : 1,
