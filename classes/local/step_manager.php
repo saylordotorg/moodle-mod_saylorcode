@@ -404,6 +404,29 @@ class step_manager {
     }
 
     /**
+     * What the student has to do to finish a step.
+     *
+     * Stated up front rather than discovered by trying, because a student who
+     * does not know what is being asked of them cannot tell a finished step
+     * from a stuck one. It lives here so the server rendered panel and the
+     * payload sent when a step is opened cannot describe the same rule
+     * differently.
+     *
+     * @param stdClass $step The step.
+     * @return string
+     */
+    public static function completion_hint(stdClass $step): string {
+        $rules = [
+            self::RULE_VIEW => 'stephintview',
+            self::RULE_RUN => 'stephintrun',
+            self::RULE_SUBMIT => 'stephintsubmit',
+            self::RULE_PASSTESTS => 'stephintpasstests',
+        ];
+
+        return get_string($rules[$step->completionrule] ?? 'stephintpasstests', 'mod_saylorcode');
+    }
+
+    /**
      * Whether a step defines any tests of its own.
      *
      * Steps reference an exercise by stable id. Until the exercise library

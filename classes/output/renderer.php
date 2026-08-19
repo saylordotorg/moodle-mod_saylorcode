@@ -17,6 +17,8 @@
 namespace mod_saylorcode\output;
 
 use context_module;
+use mod_saylorcode\local\attempt_manager;
+use mod_saylorcode\local\step_manager;
 use cm_info;
 use plugin_renderer_base;
 use stdClass;
@@ -43,7 +45,97 @@ class renderer extends plugin_renderer_base {
      * @return string HTML.
      */
     public function render_activity(stdClass $moduleinstance, cm_info $cm, context_module $context): string {
-        return $this->render_shell($moduleinstance, $cm, $context, false);
+        $steps = new step_manager($moduleinstance);
+
+        if (!$steps->is_guided()) {
+            return $this->render_shell($moduleinstance, $cm, $context, false);
+        }
+
+        return $this->render_guided($moduleinstance, $cm, $context, $steps);
+    }
+
+    /**
+     * Render a guided lesson: the step panel above the workspace.
+     *
+     * The workspace itself is unchanged, because a guided lesson is the same
+     * editor with a smaller question in front of it. Sharing it means a fix to
+     * one is a fix to both.
+     *
+     * @param stdClass $moduleinstance The activity instance.
+     * @param cm_info $cm The course module.
+     * @param context_module $context The module context.
+     * @param step_manager $steps The sequencer.
+     * @return string HTML.
+     */
+    protected function render_guided(
+        stdClass $moduleinstance,
+        cm_info $cm,
+        context_module $context,
+        step_manager $steps
+    ): string {
+        global $USER;
+
+        if (!has_capability('mod/saylorcode:attempt', $context)) {
+            // Staff see the workspace and its permission notice, the same
+            // bargain the ordinary activity strikes. A step panel driven by an
+            // attempt they do not have would say nothing true.
+            return $this->render_shell($moduleinstance, $cm, $context, false);
+        }
+
+        $manager = new attempt_manager($moduleinstance);
+        $attempt = $manager->get_or_create_attempt((int) $USER->id);
+        $attemptid = (int) $attempt->id;
+
+        // Read the step before recording the arrival, because arriving is what
+        // finishes an instruction step: recording first would advance past the
+        // very instructions this page exists to show.
+        $current = $steps->get_current_step($attemptid);
+
+        if ($current !== null) {
+            $steps->get_or_create_step_attempt($attemptid, (int) $current->id);
+        }
+
+        // Read after, so a step just finished by arriving shows as finished and
+        // the next one is already unlocked.
+        $progress = $steps->get_progress($attemptid);
+        $stepattempts = $steps->get_step_attempts($attemptid);
+
+        $list = [];
+        $number = 0;
+        foreach ($steps->get_steps() as $step) {
+            $number++;
+            $stepattempt = $stepattempts[(int) $step->id] ?? null;
+
+            $list[] = [
+                'id' => (int) $step->id,
+                'number' => $number,
+                'title' => format_string($step->title),
+                'iscurrent' => $current !== null && (int) $step->id === (int) $current->id,
+                'iscomplete' => $stepattempt !== null
+                    && $stepattempt->status === step_manager::STATUS_COMPLETE,
+                'islocked' => !$steps->can_open_step($attemptid, (int) $step->id),
+            ];
+        }
+
+        $panel = $this->render_from_template('mod_saylorcode/guided_panel', [
+            'cmid' => $cm->id,
+            'currentstepid' => $current ? (int) $current->id : 0,
+            'title' => $current ? format_string($current->title) : '',
+            'instructions' => $current
+                ? format_text(
+                    (string) $current->instructions,
+                    (int) $current->instructionsformat,
+                    ['context' => $context]
+                )
+                : '',
+            'completionhint' => $current ? step_manager::completion_hint($current) : '',
+            'stepscomplete' => $progress['complete'],
+            'stepstotal' => $progress['total'],
+            'percent' => $progress['percent'],
+            'steps' => $list,
+        ]);
+
+        return $panel . $this->render_shell($moduleinstance, $cm, $context, false);
     }
 
     /**

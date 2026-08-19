@@ -1,0 +1,114 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template mod_saylorcode/guided_panel
+
+    The step panel of a guided lesson.
+
+    Sits above the workspace and carries the one current step, the progress
+    through the lesson, and a list of steps showing which are open.
+
+    Data attributes required for JS:
+    * data-region="saylorcode-guided"
+    * data-stepid
+    * data-action="openstep"
+
+    Context variables required for this template:
+    * cmid int The course module id.
+    * currentstepid int The step the student is on.
+    * title string Current step title.
+    * instructions string Formatted instructions for the current step.
+    * completionhint string What the student has to do to finish this step.
+    * stepscomplete int Steps finished.
+    * stepstotal int Steps in the lesson.
+    * percent int Percentage complete.
+    * steps array Every step, with id, number, title, iscurrent, iscomplete and islocked.
+
+    Example context (json):
+    {
+        "cmid": 42,
+        "currentstepid": 2,
+        "title": "Print a second line",
+        "instructions": "<p>Add another println below the first.</p>",
+        "completionhint": "Finish this step by passing its tests.",
+        "stepscomplete": 1,
+        "stepstotal": 3,
+        "percent": 33,
+        "steps": [
+            {"id": 1, "number": 1, "title": "Say hello", "iscurrent": false, "iscomplete": true, "islocked": false},
+            {"id": 2, "number": 2, "title": "Print a second line", "iscurrent": true,
+             "iscomplete": false, "islocked": false},
+            {"id": 3, "number": 3, "title": "Tidy the layout", "iscurrent": false,
+             "iscomplete": false, "islocked": true}
+        ]
+    }
+}}
+<div class="saylorcode-guided" data-region="saylorcode-guided" data-cmid="{{cmid}}"
+     data-currentstepid="{{currentstepid}}">
+
+    <div class="saylorcode-guided-progress">
+        <div class="saylorcode-guided-progress-text" role="status">
+            {{#str}}stepprogress, mod_saylorcode, {{stepscomplete}}/{{stepstotal}}{{/str}}
+        </div>
+        {{! The bar is decoration; the text above carries the same information. }}
+        <div class="saylorcode-guided-bar" aria-hidden="true">
+            <div class="saylorcode-guided-bar-fill" style="width: {{percent}}%"></div>
+        </div>
+    </div>
+
+    <nav class="saylorcode-guided-steps" aria-label="{{#str}}stepsheading, mod_saylorcode{{/str}}">
+        <ol class="saylorcode-guided-steplist">
+            {{#steps}}
+            <li data-stepid="{{id}}" class="saylorcode-guided-step
+                       {{#iscurrent}}saylorcode-guided-step-current{{/iscurrent}}
+                       {{#iscomplete}}saylorcode-guided-step-done{{/iscomplete}}
+                       {{#islocked}}saylorcode-guided-step-locked{{/islocked}}">
+                {{#islocked}}
+                <span class="saylorcode-guided-steplabel">
+                    <span class="saylorcode-guided-stepnum" aria-hidden="true">{{number}}</span>
+                    {{title}}
+                    <span class="sr-only">&nbsp;{{#str}}steplockedlabel, mod_saylorcode{{/str}}</span>
+                </span>
+                {{/islocked}}
+                {{^islocked}}
+                <button type="button" class="saylorcode-guided-steplabel" data-action="openstep"
+                        data-stepid="{{id}}" {{#iscurrent}}aria-current="step"{{/iscurrent}}>
+                    <span class="saylorcode-guided-stepnum" aria-hidden="true">{{number}}</span>
+                    {{title}}
+                    {{#iscomplete}}
+                    <span class="sr-only">&nbsp;{{#str}}stepdonelabel, mod_saylorcode{{/str}}</span>
+                    {{/iscomplete}}
+                </button>
+                {{/islocked}}
+            </li>
+            {{/steps}}
+        </ol>
+    </nav>
+
+    <div class="saylorcode-guided-current">
+        <h3 class="saylorcode-guided-title" data-region="saylorcode-steptitle">{{title}}</h3>
+        <div class="saylorcode-guided-instructions" data-region="saylorcode-stepinstructions">
+            {{{instructions}}}
+        </div>
+        <p class="saylorcode-guided-hint" data-region="saylorcode-stephint">{{completionhint}}</p>
+    </div>
+</div>
+{{#js}}
+require(['mod_saylorcode/guided'], function(Guided) {
+    Guided.init({{cmid}});
+});
+{{/js}}
