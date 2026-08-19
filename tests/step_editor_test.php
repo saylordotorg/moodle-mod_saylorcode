@@ -100,7 +100,9 @@ final class step_editor_test extends \advanced_testcase {
         $step = $this->editor->get_step($id);
 
         $this->assertSame('<p>Read this.</p>', $step->instructions);
-        $this->assertSame(FORMAT_MARKDOWN, (int) $step->instructionsformat);
+        // Moodle defines the format constants as strings, so both sides are
+        // cast rather than comparing an int column against '4'.
+        $this->assertSame((int) FORMAT_MARKDOWN, (int) $step->instructionsformat);
     }
 
     /**
