@@ -111,6 +111,15 @@ class step_editor {
         $step->id = $stepid;
         $step->timemodified = time();
 
+        // The form does not offer the version fields, so a submission carries
+        // no opinion about them. Taking the default would quietly unpin a
+        // pinned step on a title-only edit, changing which exercise students
+        // see without anyone asking for it.
+        if (!isset($data->versionpolicy)) {
+            $step->versionpolicy = $existing->versionpolicy;
+            $step->pinnedversion = $existing->pinnedversion;
+        }
+
         $DB->update_record('saylorcode_steps', $step);
 
         return true;
@@ -198,9 +207,9 @@ class step_editor {
         }
 
         return (object) [
-            'sectiontitle' => trim((string) ($data->sectiontitle ?? '')),
+            'sectiontitle' => \core_text::substr(trim((string) ($data->sectiontitle ?? '')), 0, 255),
             'steptype' => (string) ($data->steptype ?? 'checkpoint'),
-            'title' => trim((string) ($data->title ?? '')),
+            'title' => \core_text::substr(trim((string) ($data->title ?? '')), 0, 255),
             'instructions' => $instructions,
             'instructionsformat' => $format,
             'stableid' => trim((string) ($data->stableid ?? '')) ?: null,

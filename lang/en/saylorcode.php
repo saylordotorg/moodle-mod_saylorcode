@@ -208,6 +208,7 @@ $string['stepstableid'] = 'Exercise ID';
 $string['stepstableid_help'] = 'An optional reference to an exercise this step is built on. Leave it empty to use the activity\'s own starter code and tests.';
 $string['steptitle'] = 'Title';
 $string['steptitlerequired'] = 'A step needs a title, because students navigate by it.';
+$string['steptitletoolong'] = 'A step title can be at most 255 characters.';
 $string['steptype'] = 'Type';
 $string['steptype_help'] = 'Instruction and example steps present something to read. A checkpoint asks the student to write or change code. Reflection and summary steps close a section. The type does not by itself decide when a step is finished; that is the progression setting below.';
 $string['steptypecheckpoint'] = 'Checkpoint';

@@ -45,9 +45,17 @@ class step_form extends moodleform {
         $mform->addElement('hidden', 'stepid', $this->_customdata['stepid']);
         $mform->setType('stepid', PARAM_INT);
 
-        $mform->addElement('text', 'title', get_string('steptitle', 'mod_saylorcode'), ['size' => 60]);
+        $mform->addElement(
+            'text',
+            'title',
+            get_string('steptitle', 'mod_saylorcode'),
+            ['size' => 60, 'maxlength' => 255]
+        );
         $mform->setType('title', PARAM_TEXT);
         $mform->addRule('title', null, 'required', null, 'client');
+        // The column holds 255 characters. Without this an author who pastes
+        // something longer meets a database error rather than a form message.
+        $mform->addRule('title', get_string('steptitletoolong', 'mod_saylorcode'), 'maxlength', 255, 'client');
 
         $mform->addElement('select', 'steptype', get_string('steptype', 'mod_saylorcode'), [
             'instruction' => get_string('steptypeinstruction', 'mod_saylorcode'),

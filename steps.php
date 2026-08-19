@@ -40,7 +40,11 @@ $instance = $DB->get_record('saylorcode', ['id' => $cm->instance], '*', MUST_EXI
 require_login($course, false, $cm);
 
 $context = context_module::instance($cm->id);
-require_capability('mod/saylorcode:addinstance', $context);
+
+// The write capability held at this module, not the course level right to
+// create one. A role can be allowed to add activities and still be denied
+// management of a particular one, and editing steps deletes student progress.
+require_capability('mod/saylorcode:manageactivities', $context);
 
 $pageurl = new moodle_url('/mod/saylorcode/steps.php', ['id' => $cm->id]);
 
