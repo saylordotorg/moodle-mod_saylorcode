@@ -120,6 +120,8 @@ if ($action === 'add' || $action === 'edit') {
             'carryforward' => $step->carryforward,
             'allowrevisit' => $step->allowrevisit,
             'stableid' => $step->stableid,
+            'versionpolicy' => $step->versionpolicy,
+            'pinnedversion' => $step->pinnedversion,
             'points' => $step->points,
         ]);
     }
@@ -146,6 +148,7 @@ if (!$steps) {
         get_string('steptype', 'mod_saylorcode'),
         get_string('stepcompletionrule', 'mod_saylorcode'),
         get_string('stepcarryforward', 'mod_saylorcode'),
+        get_string('stepexercise', 'mod_saylorcode'),
         get_string('stepactions', 'mod_saylorcode'),
     ];
     $table->attributes['class'] = 'generaltable saylorcode-steps';
@@ -185,12 +188,36 @@ if (!$steps) {
             new confirm_action(get_string('stepdeleteconfirm', 'mod_saylorcode'))
         );
 
+        // What this step actually resolves to. An author who typed a reference
+        // for an exercise that is not published would otherwise see nothing
+        // wrong while students silently got the activity's content instead.
+        $resolved = \mod_saylorcode\local\content::for_step($instance, $step);
+        $source = $resolved->get_source();
+
+        if ($resolved->is_from_library()) {
+            $exercise = html_writer::span(
+                get_string('stepexerciseversion', 'mod_saylorcode', (object) [
+                    'stableid' => $step->stableid,
+                    'version' => $resolved->get_version_number(),
+                ]),
+                'badge badge-success bg-success text-white'
+            );
+        } else if ($source === 'noreference') {
+            $exercise = html_writer::span(get_string('stepexerciseactivity', 'mod_saylorcode'), 'text-muted');
+        } else {
+            $exercise = html_writer::span(
+                get_string('stepexercise' . $source, 'mod_saylorcode', $step->stableid),
+                'saylorcode-progress-stuck'
+            );
+        }
+
         $table->data[] = [
             $number,
             format_string($step->title),
             get_string('steptype' . $step->steptype, 'mod_saylorcode'),
             get_string('steprule' . $step->completionrule, 'mod_saylorcode'),
             empty($step->carryforward) ? get_string('no') : get_string('yes'),
+            $exercise,
             implode(' &nbsp; ', $actions),
         ];
     }

@@ -26,7 +26,7 @@ defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'mod_saylorcode';
 
-$plugin->version   = 2026081906;
+$plugin->version   = 2026081907;
 
 $plugin->requires  = 2024100700; // Moodle 4.5.
 $plugin->supported = [405, 405];

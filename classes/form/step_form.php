@@ -16,6 +16,7 @@
 
 namespace mod_saylorcode\form;
 
+use local_saylorcode\local\library\exercise_resolver;
 use local_saylorcode\local\stable_id;
 use mod_saylorcode\local\step_manager;
 use moodleform;
@@ -98,6 +99,21 @@ class step_form extends moodleform {
         $mform->setType('stableid', PARAM_ALPHANUMEXT);
         $mform->addHelpButton('stableid', 'stepstableid', 'mod_saylorcode');
 
+        // Only meaningful once the step names an exercise, so they are hidden
+        // until it does rather than inviting a choice that does nothing.
+        $mform->addElement('select', 'versionpolicy', get_string('stepversionpolicy', 'mod_saylorcode'), [
+            exercise_resolver::POLICY_LATEST => get_string('stepversionlatest', 'mod_saylorcode'),
+            exercise_resolver::POLICY_PINNED => get_string('stepversionpinned', 'mod_saylorcode'),
+        ]);
+        $mform->setDefault('versionpolicy', exercise_resolver::POLICY_LATEST);
+        $mform->addHelpButton('versionpolicy', 'stepversionpolicy', 'mod_saylorcode');
+        $mform->hideIf('versionpolicy', 'stableid', 'eq', '');
+
+        $mform->addElement('text', 'pinnedversion', get_string('steppinnedversion', 'mod_saylorcode'), ['size' => 6]);
+        $mform->setType('pinnedversion', PARAM_INT);
+        $mform->hideIf('pinnedversion', 'versionpolicy', 'neq', exercise_resolver::POLICY_PINNED);
+        $mform->hideIf('pinnedversion', 'stableid', 'eq', '');
+
         $mform->addElement('text', 'points', get_string('steppoints', 'mod_saylorcode'), ['size' => 6]);
         $mform->setType('points', PARAM_FLOAT);
         $mform->setDefault('points', 0);
@@ -124,6 +140,16 @@ class step_form extends moodleform {
         $stableid = trim((string) ($data['stableid'] ?? ''));
         if ($stableid !== '' && !stable_id::is_valid($stableid)) {
             $errors['stableid'] = get_string('stableidinvalid', 'mod_saylorcode');
+        }
+
+        // A pinned step with no version resolves as a broken pin and quietly
+        // falls back to the activity's content, so it is refused here where an
+        // author can still see why.
+        if (
+            ($data['versionpolicy'] ?? '') === exercise_resolver::POLICY_PINNED
+                && (int) ($data['pinnedversion'] ?? 0) < 1
+        ) {
+            $errors['pinnedversion'] = get_string('steppinnedversionrequired', 'mod_saylorcode');
         }
 
         if ((float) ($data['points'] ?? 0) < 0) {

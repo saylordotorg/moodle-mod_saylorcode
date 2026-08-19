@@ -223,6 +223,70 @@ final class content_test extends \advanced_testcase {
     }
 
     /**
+     * Two steps of one lesson can use two different exercises.
+     *
+     * This is the constraint the library was meant to lift: before it, every
+     * checkpoint in a lesson shared the activity's single set of tests, so a
+     * multi step lesson could only ever build towards one final output.
+     */
+    public function test_two_steps_can_use_two_different_exercises(): void {
+        $repository = new exercise_repository();
+
+        foreach (['CS101-U01-E01' => 'first', 'CS101-U01-E02' => 'second'] as $reference => $marker) {
+            $exercise = $repository->create($reference, 'Exercise ' . $marker, [
+                'startercode' => $marker . " starter
+",
+                'testcases' => json_encode([
+                    ['name' => $marker . ' case', 'expected' => $marker, 'ispublic' => 1, 'weight' => 1],
+                ]),
+            ]);
+            $repository->publish($exercise, 'First');
+        }
+
+        $instance = $this->activity();
+
+        $one = (object) ['stableid' => 'CS101-U01-E01', 'versionpolicy' => 'latest', 'pinnedversion' => 0];
+        $two = (object) ['stableid' => 'CS101-U01-E02', 'versionpolicy' => 'latest', 'pinnedversion' => 0];
+
+        $this->assertSame("first starter
+", content::for_step($instance, $one)->get_starter_code());
+        $this->assertSame("second starter
+", content::for_step($instance, $two)->get_starter_code());
+
+        $this->assertSame('first case', content::for_step($instance, $one)->get_test_cases()[0]['name']);
+        $this->assertSame('second case', content::for_step($instance, $two)->get_test_cases()[0]['name']);
+    }
+
+    /**
+     * A step pinned to a version stays there while the exercise moves on.
+     */
+    public function test_a_pinned_step_holds_its_version(): void {
+        $repository = new exercise_repository();
+
+        $exercise = $repository->create('CS101-U01-E01', 'Doubling', [
+            'startercode' => "version one
+",
+            'testcases' => json_encode([['name' => 'One', 'expected' => 'x', 'ispublic' => 1, 'weight' => 1]]),
+        ]);
+        $repository->publish($exercise, 'First');
+
+        $exercise = $repository->find('CS101-U01-E01');
+        $repository->write_draft($exercise, ['startercode' => "version two
+"]);
+        $repository->publish($exercise, 'Second');
+
+        $instance = $this->activity();
+
+        $pinned = (object) ['stableid' => 'CS101-U01-E01', 'versionpolicy' => 'pinned', 'pinnedversion' => 1];
+        $latest = (object) ['stableid' => 'CS101-U01-E01', 'versionpolicy' => 'latest', 'pinnedversion' => 0];
+
+        $this->assertSame("version one
+", content::for_step($instance, $pinned)->get_starter_code());
+        $this->assertSame("version two
+", content::for_step($instance, $latest)->get_starter_code());
+    }
+
+    /**
      * A draft that has never been published does not reach a student.
      */
     public function test_an_unpublished_draft_does_not_reach_a_student(): void {
