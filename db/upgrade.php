@@ -54,5 +54,16 @@ function xmldb_saylorcode_upgrade($oldversion): bool {
         upgrade_mod_savepoint(true, 2026081801, 'saylorcode');
     }
 
+    if ($oldversion < 2026081802) {
+        $table = new xmldb_table('saylorcode');
+
+        $field = new xmldb_field('layout', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL, null, 'split', 'profileid');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        upgrade_mod_savepoint(true, 2026081802, 'saylorcode');
+    }
+
     return true;
 }

@@ -16,10 +16,9 @@
 /**
  * Client side state for the Saylor Code Studio workspace.
  *
- * Owns the editor shell: dirty tracking, debounced autosave, confirmation
- * before consequential actions, and announcing state changes to assistive
- * technology. Execution is a server concern; this module asks for it and
- * renders what comes back.
+ * Drives all three layouts from one set of markup. The layout decides where
+ * results appear; this module decides what they say, so adding a layout is a
+ * template and stylesheet change rather than a change here.
  *
  * @module     mod_saylorcode/workspace
  * @copyright  2026 Saylor Academy
@@ -29,6 +28,7 @@
 import Ajax from 'core/ajax';
 import {get_string as getString} from 'core/str';
 import Notification from 'core/notification';
+import * as Editor from 'mod_saylorcode/editor';
 
 /**
  * How long the editor must be idle before an autosave fires.
@@ -40,25 +40,36 @@ import Notification from 'core/notification';
  */
 const AUTOSAVE_IDLE_MS = 2000;
 
+/** @type {string} One level of indentation, for the plain fallback editor. */
+const INDENT = '    ';
+
+/** @type {string} Where the chosen editor theme is remembered. */
+const THEME_KEY = 'mod_saylorcode/editortheme';
+
 /** @type {Object} Selectors used by this module. */
 const SELECTORS = {
     SHELL: '[data-region="saylorcode-shell"]',
     EDITOR: '[data-region="editor"]',
     STDIN: '[data-region="stdin"]',
     STATUS: '[data-region="status"]',
+    SAVE: '[data-region="save"]',
+    RAN: '[data-region="ran"]',
     CONSOLE: '[data-region="console"]',
     TESTS: '[data-region="tests"]',
+    VERDICT: '[data-region="verdict"]',
+    VERDICT_SURFACE: '[data-region="verdict-surface"]',
+    ATTEMPTS: '[data-region="attempts"]',
+    ATTEMPTS_INLINE: '[data-region="attempts-inline"]',
     ACTION: '[data-action]',
+    TAB: '[data-tab]',
+    PANEL: '[data-panel]',
 };
 
-/** @type {Object} Save states the status line can report. */
-const SAVE_STATE = {
-    CLEAN: 'clean',
-    DIRTY: 'dirty',
-    SAVING: 'saving',
-    SAVED: 'saved',
-    FAILED: 'failed',
-};
+/** @type {string[]} States that mean the program or the platform failed. */
+const FAILED_STATES = [
+    'compile_error', 'runtime_error', 'timeout', 'memory_limit',
+    'output_limit', 'process_limit', 'runner_unavailable', 'internal_error',
+];
 
 /**
  * Controls one workspace instance.
@@ -72,13 +83,17 @@ class Workspace {
      */
     constructor(root) {
         this.root = root;
+        this.cmid = parseInt(root.dataset.cmid, 10);
+        this.layout = root.dataset.layout || 'split';
+        this.entryFilename = root.dataset.entryfilename || 'Main.java';
+
         this.editor = root.querySelector(SELECTORS.EDITOR);
         this.stdin = root.querySelector(SELECTORS.STDIN);
         this.status = root.querySelector(SELECTORS.STATUS);
+        this.saveEl = root.querySelector(SELECTORS.SAVE);
         this.console = root.querySelector(SELECTORS.CONSOLE);
         this.tests = root.querySelector(SELECTORS.TESTS);
-        this.cmid = parseInt(root.dataset.cmid, 10);
-        this.entryFilename = root.dataset.entryfilename || 'Main.java';
+        this.verdict = root.querySelector(SELECTORS.VERDICT);
 
         // Identifies this tab, so a save from another tab can be told apart
         // from this one catching up with itself.
@@ -86,31 +101,75 @@ class Workspace {
         this.knownSnapshotId = 0;
 
         this.saveTimer = null;
-        this.state = SAVE_STATE.CLEAN;
-        this.lastSavedValue = this.editor ? this.editor.value : '';
         this.busy = false;
+        this.dirty = false;
+        this.escapeHatch = false;
+        this.attempts = 0;
+        this.best = null;
 
+        this.code = Editor.create(this.editor, this.editorLabel());
+        this.lastSavedValue = this.code ? this.code.getValue() : '';
+
+        this.applyStoredTheme();
         this.registerListeners();
+    }
+
+    /**
+     * The accessible name for the editing surface.
+     *
+     * @returns {string} The label text.
+     */
+    editorLabel() {
+        const id = this.editor ? this.editor.id : '';
+        const label = id ? this.root.querySelector(`label[for="${id}"]`) : null;
+        return label ? label.textContent.trim() : this.entryFilename;
     }
 
     /**
      * Attach event handlers.
      */
     registerListeners() {
-        if (this.editor) {
-            this.editor.addEventListener('input', () => this.handleInput());
+        if (this.code) {
+            this.code.onChange(() => this.handleInput());
+        }
+
+        // Only the plain fallback needs hand rolled indenting. CodeMirror
+        // brings its own keymap and leaves Tab moving focus, which is the
+        // accessible default.
+        if (this.editor && this.code && !this.code.rich) {
+            this.editor.addEventListener('keydown', (e) => this.handleKeydown(e));
         }
 
         this.root.addEventListener('click', (e) => {
-            const trigger = e.target.closest(SELECTORS.ACTION);
-            if (trigger && this.root.contains(trigger)) {
+            const action = e.target.closest(SELECTORS.ACTION);
+            if (action && this.root.contains(action)) {
                 e.preventDefault();
-                this.handleAction(trigger.dataset.action);
+                this.handleAction(action.dataset.action);
+                return;
+            }
+
+            const tab = e.target.closest(SELECTORS.TAB);
+            if (tab && this.root.contains(tab)) {
+                e.preventDefault();
+                this.selectTab(tab.dataset.tab);
             }
         });
 
+        // Ctrl+Enter runs from anywhere in the workspace, which is what the
+        // action row advertises.
+        this.root.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                this.handleAction('run');
+            }
+        });
+
+        this.root.querySelectorAll(SELECTORS.TAB).forEach((tab) => {
+            tab.addEventListener('keydown', (e) => this.handleTabKeys(e));
+        });
+
         window.addEventListener('beforeunload', (e) => {
-            if (this.state === SAVE_STATE.DIRTY || this.state === SAVE_STATE.SAVING) {
+            if (this.dirty) {
                 e.preventDefault();
                 e.returnValue = '';
             }
@@ -118,10 +177,11 @@ class Workspace {
     }
 
     /**
-     * Restart the autosave countdown after a keystroke.
+     * Restart the autosave countdown after a change.
      */
     handleInput() {
-        this.setState(SAVE_STATE.DIRTY);
+        this.dirty = true;
+        this.setSaveState('saving');
 
         if (this.saveTimer) {
             window.clearTimeout(this.saveTimer);
@@ -132,12 +192,140 @@ class Workspace {
     }
 
     /**
-     * Dispatch a toolbar action.
+     * Indent handling for the plain fallback editor.
      *
-     * @param {string} action One of run, check, submit, reset or download.
+     * Escape then Tab moves focus, so a keyboard user is never trapped.
+     *
+     * @param {KeyboardEvent} e The key event.
+     */
+    handleKeydown(e) {
+        if (e.key === 'Escape') {
+            this.escapeHatch = true;
+            return;
+        }
+
+        if (e.key !== 'Tab' || this.escapeHatch) {
+            this.escapeHatch = false;
+            return;
+        }
+
+        e.preventDefault();
+
+        if (this.editor.selectionStart === this.editor.selectionEnd) {
+            this.insertIndent();
+        } else {
+            this.shiftSelectedLines(e.shiftKey);
+        }
+
+        this.handleInput();
+    }
+
+    /**
+     * Insert one indent at the cursor.
+     */
+    insertIndent() {
+        const el = this.editor;
+        const at = el.selectionStart;
+
+        el.value = el.value.slice(0, at) + INDENT + el.value.slice(at);
+        el.selectionStart = el.selectionEnd = at + INDENT.length;
+    }
+
+    /**
+     * Indent or outdent every line the selection touches.
+     *
+     * Replacing a selection with one indent would delete the selected code,
+     * which is the opposite of what pressing Tab on a block should do.
+     *
+     * @param {boolean} outdent True to remove one level rather than add one.
+     */
+    shiftSelectedLines(outdent) {
+        const el = this.editor;
+        const value = el.value;
+        const start = el.selectionStart;
+        const end = el.selectionEnd;
+
+        const from = value.lastIndexOf('\n', start - 1) + 1;
+        let to = value.indexOf('\n', end);
+        if (to === -1) {
+            to = value.length;
+        }
+
+        const lines = value.slice(from, to).split('\n');
+        let firstDelta = 0;
+        let totalDelta = 0;
+
+        const shifted = lines.map((line, index) => {
+            let result;
+            if (outdent) {
+                const removed = line.startsWith(INDENT)
+                    ? INDENT.length
+                    : (line.match(/^ {1,3}/) || [''])[0].length;
+                result = line.slice(removed);
+                totalDelta -= removed;
+                if (index === 0) {
+                    firstDelta = -removed;
+                }
+            } else {
+                result = INDENT + line;
+                totalDelta += INDENT.length;
+                if (index === 0) {
+                    firstDelta = INDENT.length;
+                }
+            }
+            return result;
+        });
+
+        el.value = value.slice(0, from) + shifted.join('\n') + value.slice(to);
+        el.selectionStart = Math.max(from, start + firstDelta);
+        el.selectionEnd = Math.max(el.selectionStart, end + totalDelta);
+    }
+
+    /**
+     * Move between tabs with the arrow keys, as a tablist should.
+     *
+     * @param {KeyboardEvent} e The key event.
+     */
+    handleTabKeys(e) {
+        const keys = {ArrowLeft: -1, ArrowRight: 1};
+        if (!(e.key in keys)) {
+            return;
+        }
+
+        e.preventDefault();
+
+        const tabs = Array.from(this.root.querySelectorAll(SELECTORS.TAB));
+        const index = tabs.indexOf(e.target);
+        const next = tabs[(index + keys[e.key] + tabs.length) % tabs.length];
+
+        this.selectTab(next.dataset.tab);
+        next.focus();
+    }
+
+    /**
+     * Show one tab panel.
+     *
+     * @param {string} name output, input or feedback.
+     */
+    selectTab(name) {
+        this.root.querySelectorAll(SELECTORS.TAB).forEach((tab) => {
+            const selected = tab.dataset.tab === name;
+            tab.setAttribute('aria-selected', selected ? 'true' : 'false');
+            tab.tabIndex = selected ? 0 : -1;
+        });
+
+        this.root.querySelectorAll(SELECTORS.PANEL).forEach((panel) => {
+            panel.hidden = panel.dataset.panel !== name;
+        });
+    }
+
+    /**
+     * Dispatch a control.
+     *
+     * @param {string} action The action name.
      */
     handleAction(action) {
-        if (this.busy) {
+        if (this.busy && action !== 'theme' && action !== 'closedrawer') {
             return;
         }
 
@@ -163,8 +351,60 @@ class Workspace {
                 this.download();
                 break;
 
+            case 'theme':
+                this.toggleTheme();
+                break;
+
+            case 'closedrawer':
+                this.root.classList.remove('saylorcode-open');
+                break;
+
             default:
                 break;
+        }
+    }
+
+    /**
+     * Switch the editor between its dark and light surfaces.
+     *
+     * The choice is remembered across activities, because it is a preference
+     * about reading code rather than about one exercise.
+     */
+    toggleTheme() {
+        const light = this.root.classList.toggle('saylorcode-light');
+        const button = this.root.querySelector('[data-action="theme"]');
+
+        if (button) {
+            button.setAttribute('aria-pressed', light ? 'true' : 'false');
+        }
+
+        try {
+            window.localStorage.setItem(THEME_KEY, light ? 'light' : 'dark');
+        } catch (e) {
+            // A browser refusing storage is not a reason to fail the toggle.
+            this.escapeHatch = false;
+        }
+    }
+
+    /**
+     * Apply a previously chosen editor theme.
+     */
+    applyStoredTheme() {
+        let stored = null;
+        try {
+            stored = window.localStorage.getItem(THEME_KEY);
+        } catch (e) {
+            stored = null;
+        }
+
+        if (stored !== 'light') {
+            return;
+        }
+
+        this.root.classList.add('saylorcode-light');
+        const button = this.root.querySelector('[data-action="theme"]');
+        if (button) {
+            button.setAttribute('aria-pressed', 'true');
         }
     }
 
@@ -189,7 +429,7 @@ class Workspace {
      * @returns {Object} Relative path to contents.
      */
     getFiles() {
-        return {[this.entryFilename]: this.editor ? this.editor.value : ''};
+        return {[this.entryFilename]: this.code ? this.code.getValue() : ''};
     }
 
     /**
@@ -198,12 +438,12 @@ class Workspace {
      * @returns {Promise} Resolves when the save is acknowledged.
      */
     save() {
-        if (!this.editor || this.editor.value === this.lastSavedValue) {
+        if (!this.code || this.code.getValue() === this.lastSavedValue) {
+            this.dirty = false;
             return Promise.resolve(true);
         }
 
-        this.setState(SAVE_STATE.SAVING);
-        const pending = this.editor.value;
+        const pending = this.code.getValue();
 
         return Ajax.call([{
             methodname: 'mod_saylorcode_save_code',
@@ -216,17 +456,17 @@ class Workspace {
         }])[0].then((response) => {
             if (response.conflict) {
                 // Neither tab may silently discard the other's work.
-                this.setState(SAVE_STATE.FAILED);
-                this.showMessage(response.message);
+                this.setSaveState('conflict', response.message);
                 return false;
             }
 
             this.lastSavedValue = pending;
             this.knownSnapshotId = response.snapshotid;
-            this.setState(SAVE_STATE.SAVED);
+            this.dirty = false;
+            this.setSaveState('saved');
             return true;
         }).catch((error) => {
-            this.setState(SAVE_STATE.FAILED);
+            this.setSaveState('failed');
             throw error;
         });
     }
@@ -238,8 +478,10 @@ class Workspace {
      * @returns {Promise} Resolves when the result has been rendered.
      */
     execute(mode) {
-        this.busy = true;
-        this.announce('running');
+        this.setBusy(true);
+        this.setStatus('running');
+        this.clearResults();
+        this.openResults();
 
         return Ajax.call([{
             methodname: 'mod_saylorcode_run_code',
@@ -251,15 +493,17 @@ class Workspace {
                 browsersession: this.browserSession,
             },
         }])[0].then((result) => {
-            this.lastSavedValue = this.editor ? this.editor.value : '';
-            this.setState(SAVE_STATE.SAVED);
-            this.renderResult(result);
+            this.lastSavedValue = this.code ? this.code.getValue() : '';
+            this.dirty = false;
+            this.setSaveState('saved');
+            this.renderResult(result, mode);
             return result;
         }).catch((error) => {
-            this.showMessage(error.message || String(error));
+            this.setStatus('error');
+            this.writeConsole([{text: error.message || String(error), kind: 'err'}]);
             throw error;
         }).finally(() => {
-            this.busy = false;
+            this.setBusy(false);
         });
     }
 
@@ -269,7 +513,7 @@ class Workspace {
      * @returns {Promise} Resolves when the editor has been restored.
      */
     reset() {
-        this.busy = true;
+        this.setBusy(true);
 
         return Ajax.call([{
             methodname: 'mod_saylorcode_reset_code',
@@ -281,15 +525,19 @@ class Workspace {
             const files = JSON.parse(response.files);
             const restored = files[this.entryFilename] ?? '';
 
-            if (this.editor) {
-                this.editor.value = restored;
+            if (this.code) {
+                this.code.setValue(restored);
                 this.lastSavedValue = restored;
             }
-            this.setState(SAVE_STATE.SAVED);
-            this.showMessage(response.message);
+
+            this.dirty = false;
+            this.clearResults();
+            this.setStatus('idle');
+            this.setSaveState('saved');
+            this.root.classList.remove('saylorcode-open');
             return response;
         }).finally(() => {
-            this.busy = false;
+            this.setBusy(false);
         });
     }
 
@@ -297,11 +545,11 @@ class Workspace {
      * Offer the current code as a file.
      */
     download() {
-        if (!this.editor) {
+        if (!this.code) {
             return;
         }
 
-        const blob = new Blob([this.editor.value], {type: 'text/plain'});
+        const blob = new Blob([this.code.getValue()], {type: 'text/plain'});
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -313,29 +561,69 @@ class Workspace {
     }
 
     /**
-     * Render an execution result.
+     * Render one execution result.
      *
      * @param {Object} result The web service response.
+     * @param {string} mode The action that produced it.
      */
-    renderResult(result) {
-        if (this.console) {
-            const parts = [];
-            if (result.compileroutput) {
-                parts.push(result.compileroutput);
-            }
-            if (result.stdout) {
-                parts.push(result.stdout);
-            }
-            if (result.stderr) {
-                parts.push(result.stderr);
+    renderResult(result, mode) {
+        const lines = [];
+
+        if (result.compileroutput) {
+            result.compileroutput.split('\n').forEach((text) => lines.push({text, kind: 'err'}));
+        }
+        if (result.stdout) {
+            result.stdout.replace(/\n$/, '').split('\n').forEach((text) => lines.push({text}));
+        }
+        if (result.stderr) {
+            result.stderr.split('\n').forEach((text) => lines.push({text, kind: 'err'}));
+        }
+
+        this.writeConsole(lines);
+        this.renderTests(result.tests || []);
+        this.stampRan();
+
+        const tests = result.tests || [];
+        if (FAILED_STATES.indexOf(result.state) !== -1) {
+            this.setStatus('error');
+        } else if (mode === 'run' || !tests.length) {
+            this.setStatus('ran');
+        } else {
+            this.setStatus(tests.every((t) => t.passed) ? 'passed' : 'failed');
+        }
+
+        if (mode === 'submit') {
+            this.recordAttempt(tests);
+        }
+
+        this.showVerdict(result, mode, tests);
+    }
+
+    /**
+     * Put lines into the console.
+     *
+     * @param {Array} lines Objects with text and an optional kind.
+     */
+    writeConsole(lines) {
+        if (!this.console) {
+            return;
+        }
+
+        this.console.textContent = '';
+
+        lines.forEach((line) => {
+            const el = document.createElement('div');
+            el.className = 'saylorcode-console-line';
+            if (line.kind === 'err') {
+                el.classList.add('saylorcode-line-err');
+            } else if (line.kind === 'ok') {
+                el.classList.add('saylorcode-line-ok');
             }
             // Assigned as text, never as HTML. Program output is untrusted and
             // must never be parsed as markup.
-            this.console.textContent = parts.join('\n');
-        }
-
-        this.renderTests(result.tests || []);
-        this.showMessage(result.message || '');
+            el.textContent = line.text;
+            this.console.appendChild(el);
+        });
     }
 
     /**
@@ -363,7 +651,7 @@ class Workspace {
 
             const name = document.createElement('span');
             name.className = 'saylorcode-test-name';
-            // Not colour alone: the outcome is stated in text as well.
+            // Not colour alone: the outcome is stated as a symbol and as text.
             name.textContent = `${test.passed ? '✓' : '✗'} ${test.name}`;
             item.appendChild(name);
 
@@ -381,45 +669,191 @@ class Workspace {
     }
 
     /**
-     * Record a new save state and announce it.
+     * Show the summary line under the results.
      *
-     * @param {string} state One of the SAVE_STATE values.
+     * @param {Object} result The web service response.
+     * @param {string} mode The action that produced it.
+     * @param {Array} tests The test results.
      */
-    setState(state) {
-        this.state = state;
+    showVerdict(result, mode, tests) {
+        if (!this.verdict) {
+            return;
+        }
 
-        if (state === SAVE_STATE.SAVING) {
-            this.announce('saving');
-        } else if (state === SAVE_STATE.SAVED) {
-            this.announce('saved');
+        const passed = tests.filter((t) => t.passed).length;
+        const good = tests.length > 0 && passed === tests.length;
+
+        const finish = (text) => {
+            this.verdict.textContent = text;
+            this.verdict.hidden = !text;
+            this.verdict.classList.toggle('is-good', good && tests.length > 0);
+            this.verdict.classList.toggle('is-bad', !good && tests.length > 0);
+
+            const surface = this.root.querySelector(SELECTORS.VERDICT_SURFACE);
+            if (surface && text) {
+                surface.textContent = text;
+                surface.classList.toggle('is-good', good);
+                surface.classList.toggle('is-bad', !good);
+            }
+        };
+
+        if (!tests.length) {
+            finish(result.message || '');
+            return;
+        }
+
+        const key = mode === 'submit' ? 'verdictsubmitted' : 'verdictchecked';
+        const args = mode === 'submit'
+            ? {attempt: this.attempts, passed: passed, total: tests.length}
+            : {passed: passed, total: tests.length};
+
+        getString(key, 'mod_saylorcode', args).then((text) => {
+            finish(`${good ? '✓' : '✗'} ${text}`);
+            return text;
+        }).catch(Notification.exception);
+    }
+
+    /**
+     * Record a submission in the attempt counter.
+     *
+     * @param {Array} tests The test results.
+     */
+    recordAttempt(tests) {
+        const passed = tests.filter((t) => t.passed).length;
+
+        this.attempts++;
+        this.best = this.best === null ? passed : Math.max(this.best, passed);
+
+        getString('attemptsummary', 'mod_saylorcode', {
+            attempt: this.attempts,
+            best: this.best,
+            total: tests.length,
+        }).then((label) => {
+            this.root.querySelectorAll(`${SELECTORS.ATTEMPTS}, ${SELECTORS.ATTEMPTS_INLINE}`)
+                .forEach((el) => {
+                    el.textContent = label;
+                });
+            return label;
+        }).catch(Notification.exception);
+    }
+
+    /**
+     * Clear the previous run's output.
+     */
+    clearResults() {
+        if (this.console) {
+            this.console.textContent = '';
+        }
+        if (this.tests) {
+            this.tests.textContent = '';
+        }
+        if (this.verdict) {
+            this.verdict.hidden = true;
         }
     }
 
     /**
-     * Put a translated message in the live region.
-     *
-     * @param {string} key Language string key.
+     * Bring the results into view, in whichever layout is in use.
      */
-    announce(key) {
+    openResults() {
+        if (this.layout === 'drawer') {
+            this.root.classList.add('saylorcode-open');
+        }
+        if (this.layout === 'tabs') {
+            this.selectTab('output');
+        }
+    }
+
+    /**
+     * Note the time of the last run.
+     */
+    stampRan() {
+        const el = this.root.querySelector(SELECTORS.RAN);
+        if (!el) {
+            return;
+        }
+
+        const now = new Date();
+        const pad = (n) => n.toString().padStart(2, '0');
+
+        getString('ranat', 'mod_saylorcode', `${pad(now.getHours())}:${pad(now.getMinutes())}`)
+            .then((text) => {
+                el.textContent = text;
+                return text;
+            }).catch(Notification.exception);
+    }
+
+    /**
+     * Record that work is in flight, and show it.
+     *
+     * @param {boolean} busy Whether work is in flight.
+     */
+    setBusy(busy) {
+        this.busy = busy;
+        this.root.classList.toggle('saylorcode-busy', busy);
+    }
+
+    /**
+     * Update the status pill.
+     *
+     * @param {string} state idle, running, ran, error, passed or failed.
+     */
+    setStatus(state) {
         if (!this.status) {
             return;
         }
 
-        getString(key, 'mod_saylorcode').then((text) => {
+        const keys = {
+            idle: 'statusready',
+            running: 'statusrunning',
+            ran: 'statusran',
+            error: 'statuserror',
+            passed: 'statuspassed',
+            failed: 'statusfailed',
+        };
+
+        this.status.classList.remove('is-running', 'is-good', 'is-bad');
+        if (state === 'running') {
+            this.status.classList.add('is-running');
+        } else if (state === 'ran' || state === 'passed') {
+            this.status.classList.add('is-good');
+        } else if (state === 'error' || state === 'failed') {
+            this.status.classList.add('is-bad');
+        }
+
+        getString(keys[state] || keys.idle, 'mod_saylorcode').then((text) => {
             this.status.textContent = text;
             return text;
         }).catch(Notification.exception);
     }
 
     /**
-     * Put a ready made message in the live region.
+     * Update the save indicator.
      *
-     * @param {string} message The message text.
+     * @param {string} state saving, saved, failed or conflict.
+     * @param {string} message Optional ready made message.
      */
-    showMessage(message) {
-        if (this.status && message) {
-            this.status.textContent = message;
+    setSaveState(state, message) {
+        if (!this.saveEl) {
+            return;
         }
+
+        if (message) {
+            this.saveEl.textContent = message;
+            return;
+        }
+
+        const keys = {
+            saving: 'saving',
+            saved: 'saved',
+            failed: 'savefailed',
+            conflict: 'saveconflict',
+        };
+
+        getString(keys[state] || 'saved', 'mod_saylorcode').then((text) => {
+            this.saveEl.textContent = text;
+            return text;
+        }).catch(Notification.exception);
     }
 }
 

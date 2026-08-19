@@ -84,6 +84,15 @@ class mod_saylorcode_mod_form extends moodleform_mod {
         $mform->addElement('select', 'profileid', get_string('profileid', 'mod_saylorcode'), $profiles);
         $mform->addHelpButton('profileid', 'profileid', 'mod_saylorcode');
 
+        $layouts = [
+            'split' => get_string('layoutsplit', 'mod_saylorcode'),
+            'drawer' => get_string('layoutdrawer', 'mod_saylorcode'),
+            'tabs' => get_string('layouttabs', 'mod_saylorcode'),
+        ];
+        $mform->addElement('select', 'layout', get_string('layout', 'mod_saylorcode'), $layouts);
+        $mform->addHelpButton('layout', 'layout', 'mod_saylorcode');
+        $mform->setDefault('layout', 'split');
+
         $mform->addElement('text', 'entryfilename', get_string('entryfilename', 'mod_saylorcode'), ['size' => '40']);
         $mform->setType('entryfilename', PARAM_FILE);
         $mform->addHelpButton('entryfilename', 'entryfilename', 'mod_saylorcode');
