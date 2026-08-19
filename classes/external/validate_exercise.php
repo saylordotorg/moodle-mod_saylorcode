@@ -37,7 +37,6 @@ use mod_saylorcode\local\exercise_validator;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class validate_exercise extends external_api {
-
     /**
      * Parameters.
      *

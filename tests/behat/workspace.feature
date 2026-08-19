@@ -52,13 +52,13 @@ Feature: Working in a Saylor Code Studio activity
       | Exercise stable ID | NOTANID          |
     Then I should see "This is not a valid exercise ID"
 
-  Scenario: Test cases must be valid JSON
+  Scenario: A named test case must say what it expects
     Given I log in as "teacher1"
     When I add a "saylorcode" activity to course "Course 1" section "1" and I fill the form with:
-      | Name               | Broken tests    |
-      | Exercise stable ID | CS101-U01-E02   |
-      | Test cases         | not json at all |
-    Then I should see "Test cases must be a JSON array"
+      | Name               | Half written case |
+      | Exercise stable ID | CS101-U01-E02     |
+      | id_tcname_0        | Doubles four      |
+    Then I should see "A named test case needs expected output"
 
   @accessibility @javascript
   Scenario: The workspace meets accessibility standards

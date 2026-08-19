@@ -162,7 +162,6 @@ $string['tcweight'] = 'Weight';
 $string['tcweightpositive'] = 'A weight must be greater than zero, or the case cannot affect the score.';
 $string['testcases'] = 'Test cases';
 $string['testcases_help'] = 'Each case runs the student\x27s program once and compares what it prints with what you expect. Trailing spaces and blank lines are ignored, so a student is not failed for whitespace. Public cases are shown by Check; every case counts towards a submission, and a hidden case is never described to the student.';
-$string['testcasesinvalid'] = 'Test cases must be a JSON array. Each entry needs at least an expected value.';
 $string['tests'] = 'Tests';
 $string['toggleeditortheme'] = 'Switch the editor between dark and light';
 $string['unlimitedattempts'] = 'Unlimited';

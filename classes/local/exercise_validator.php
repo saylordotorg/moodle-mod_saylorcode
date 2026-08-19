@@ -38,7 +38,6 @@ use local_saylorcode\local\runner\provider_interface;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class exercise_validator {
-
     /** @var provider_interface The execution backend. */
     protected provider_interface $provider;
 
