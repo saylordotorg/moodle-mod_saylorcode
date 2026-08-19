@@ -250,8 +250,10 @@ final class catalogue_test extends \advanced_testcase {
         $actualready = [];
         foreach ($found as $record) {
             foreach ($shapes as $name => $shape) {
-                if ($record->testcases === $shape['testcases']
-                        && $record->referencesolution === $shape['referencesolution']) {
+                if (
+                    $record->testcases === $shape['testcases']
+                    && $record->referencesolution === $shape['referencesolution']
+                ) {
                     $actualready[] = $name;
                     break;
                 }
