@@ -219,6 +219,71 @@ class Workspace {
     }
 
     /**
+     * Ask for the next hint, or the reference solution.
+     *
+     * @param {string} what hint or solution.
+     * @returns {Promise} Resolved once the answer is on the page.
+     */
+    reveal(what) {
+        const panel = document.querySelector('[data-region="saylorcode-hints"]');
+
+        if (!panel) {
+            return Promise.resolve();
+        }
+
+        return Ajax.call([{
+            methodname: 'mod_saylorcode_reveal_hint',
+            args: {cmid: this.cmid, what: what},
+        }])[0].then((result) => {
+            const list = panel.querySelector('[data-region="saylorcode-hintlist"]');
+            const status = panel.querySelector('[data-region="saylorcode-hintstatus"]');
+
+            if (!result.text) {
+                // Nothing left. Said in the status line rather than as an
+                // error, because asking again is a reasonable thing to do.
+                if (status) {
+                    return getString('hintnone', 'mod_saylorcode').then((text) => {
+                        status.textContent = text;
+
+                        return text;
+                    });
+                }
+
+                return result;
+            }
+
+            const item = document.createElement('li');
+            item.className = result.issolution ? 'saylorcode-hintitem saylorcode-solutionitem' : 'saylorcode-hintitem';
+
+            if (result.issolution) {
+                // The solution is code, so it keeps its shape.
+                const pre = document.createElement('pre');
+                pre.textContent = result.text;
+                item.appendChild(pre);
+            } else {
+                item.textContent = result.text;
+            }
+
+            if (list) {
+                list.appendChild(item);
+            }
+
+            if (status && !result.issolution) {
+                return getString('hintnumbered', 'mod_saylorcode', {
+                    number: result.number,
+                    total: result.total,
+                }).then((text) => {
+                    status.textContent = text;
+
+                    return text;
+                });
+            }
+
+            return result;
+        });
+    }
+
+    /**
      * Restart the autosave countdown after a change.
      */
     handleInput() {
@@ -386,6 +451,11 @@ class Workspace {
             case 'run':
             case 'check':
                 this.execute(action).catch(Notification.exception);
+                break;
+
+            case 'hint':
+            case 'solution':
+                this.reveal(action).catch(Notification.exception);
                 break;
 
             case 'submit':

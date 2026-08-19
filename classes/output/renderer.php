@@ -202,6 +202,8 @@ class renderer extends plugin_renderer_base {
             ->get_profile($moduleinstance->profileid);
         $runtimename = $profile ? $profile->get_display_name() : $moduleinstance->profileid;
 
+        $hints = new \mod_saylorcode\local\hint_manager($moduleinstance);
+
         $layout = $moduleinstance->layout ?? 'split';
 
         $data = [
@@ -223,7 +225,9 @@ class renderer extends plugin_renderer_base {
             // drives completion and grading whether or not tests exist.
             'cansubmit' => ($moduleinstance->activitymode ?? '') !== 'playground',
             'canattempt' => $canattempt,
-            'allowhints' => !empty($moduleinstance->allowhints),
+            'allowhints' => $hints->has_hints(),
+            'allowsolution' => $hints->allows_solution(),
+            'revealedhints' => $canattempt && isset($attempt) ? $hints->get_revealed($attempt) : [],
             'allowdownload' => !empty($moduleinstance->allowdownload),
             'nopermission' => $canattempt ? null : get_string('nopermissiontoattempt', 'mod_saylorcode'),
             'preview' => $preview,
