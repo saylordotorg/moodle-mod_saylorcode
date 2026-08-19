@@ -84,17 +84,54 @@ class catalogue {
         // has: is this exercise finished enough to put in front of a student?
         $state = $filters['state'] ?? '';
         if ($state === 'notests') {
-            $where[] = '(s.testcases IS NULL OR ' . $DB->sql_compare_text('s.testcases') . " = '')";
+            $where[] = '(NOT ' . self::has_cases_sql() . ')';
         } else if ($state === 'nosolution') {
-            $where[] = '(s.referencesolution IS NULL OR '
-                . $DB->sql_compare_text('s.referencesolution') . " = '')";
+            $where[] = '(NOT ' . self::has_solution_sql() . ')';
         } else if ($state === 'ready') {
-            $where[] = '(s.testcases IS NOT NULL AND ' . $DB->sql_compare_text('s.testcases') . " <> ''"
-                . ' AND s.referencesolution IS NOT NULL AND '
-                . $DB->sql_compare_text('s.referencesolution') . " <> '')";
+            $where[] = '(' . self::has_cases_sql() . ' AND ' . self::has_solution_sql() . ')';
         }
 
         return [$fields, $from, implode(' AND ', $where), $params];
+    }
+
+    /**
+     * SQL deciding whether an exercise defines any test cases.
+     *
+     * This has to mean exactly what count_cases() means, or the catalogue will
+     * list a row under Ready and then label it "No tests" in the same table.
+     * The column holds a JSON array, so "[]" has to be excluded by hand: it is
+     * a non-empty string describing no cases.
+     *
+     * Text that is not JSON at all would still read as cases here. Nothing the
+     * plugin writes can produce that, because the form serialises the column
+     * itself, and matching the leading bracket in SQL is not portable: in
+     * MSSQL a LIKE pattern beginning with "[" opens a character class.
+     *
+     * @return string A boolean SQL expression.
+     */
+    protected static function has_cases_sql(): string {
+        global $DB;
+
+        return '(s.testcases IS NOT NULL'
+            . ' AND ' . $DB->sql_compare_text('s.testcases') . " <> ''"
+            . ' AND ' . $DB->sql_compare_text('s.testcases') . " <> '[]')";
+    }
+
+    /**
+     * SQL deciding whether an exercise has a reference solution.
+     *
+     * Blank solutions are normalised to an empty string when the form saves,
+     * so emptiness is the whole test here. A row hand edited in the database
+     * to hold only whitespace would read as ready here and as unfinished in
+     * the badge; nothing the plugin itself writes can produce that.
+     *
+     * @return string A boolean SQL expression.
+     */
+    protected static function has_solution_sql(): string {
+        global $DB;
+
+        return '(s.referencesolution IS NOT NULL'
+            . ' AND ' . $DB->sql_compare_text('s.referencesolution') . " <> '')";
     }
 
     /**

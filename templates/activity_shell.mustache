@@ -63,6 +63,7 @@
     * canattempt bool Whether the viewer may edit and run code.
     * allowdownload bool Whether the download control is offered.
     * nopermission string|null Message shown when the viewer may not attempt.
+    * preview bool Whether this is an author preview, where the controls do nothing.
 
     Example context (json):
     {
@@ -82,7 +83,8 @@
         "expected": [{"line": "Hello, World!"}, {"line": "How are you?"}],
         "canattempt": true,
         "allowdownload": true,
-        "nopermission": null
+        "nopermission": null,
+        "preview": false
     }
 }}
 {{#nopermission}}
@@ -97,7 +99,8 @@
      data-layout="{{layout}}"
      data-mode="{{activitymode}}"
      data-entryfilename="{{entryfilename}}"
-     data-profileid="{{profileid}}">
+     data-profileid="{{profileid}}"
+     data-preview="{{#preview}}1{{/preview}}">
 
     {{! Header: which file, which language, and how it is going. }}
     <div class="saylorcode-filebar">
@@ -272,7 +275,7 @@
 
     <div class="saylorcode-actions" role="group"
          aria-label="{{#str}}actionsheading, mod_saylorcode{{/str}}">
-        <button type="button" class="saylorcode-btn saylorcode-btn-primary" data-action="run">
+        <button type="button" class="saylorcode-btn saylorcode-btn-primary" data-action="run"{{#preview}} disabled{{/preview}}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none"
                  aria-hidden="true" focusable="false">
                 <polygon points="6 3 20 12 6 21 6 3"></polygon>
@@ -280,23 +283,23 @@
             {{#str}}run, mod_saylorcode{{/str}}
         </button>
         {{#hastests}}
-        <button type="button" class="saylorcode-btn saylorcode-btn-secondary" data-action="check">
+        <button type="button" class="saylorcode-btn saylorcode-btn-secondary" data-action="check"{{#preview}} disabled{{/preview}}>
             {{#str}}check, mod_saylorcode{{/str}}
         </button>
         {{/hastests}}
         {{#cansubmit}}
-        <button type="button" class="saylorcode-btn saylorcode-btn-secondary" data-action="submit">
+        <button type="button" class="saylorcode-btn saylorcode-btn-secondary" data-action="submit"{{#preview}} disabled{{/preview}}>
             {{#str}}submit, mod_saylorcode{{/str}}
         </button>
         {{/cansubmit}}
 
         <span class="saylorcode-actions-divider" aria-hidden="true"></span>
 
-        <button type="button" class="saylorcode-btn saylorcode-btn-ghost" data-action="reset">
+        <button type="button" class="saylorcode-btn saylorcode-btn-ghost" data-action="reset"{{#preview}} disabled{{/preview}}>
             {{#str}}reset, mod_saylorcode{{/str}}
         </button>
         {{#allowdownload}}
-        <button type="button" class="saylorcode-btn saylorcode-btn-ghost" data-action="download">
+        <button type="button" class="saylorcode-btn saylorcode-btn-ghost" data-action="download"{{#preview}} disabled{{/preview}}>
             {{#str}}download{{/str}}
         </button>
         {{/allowdownload}}

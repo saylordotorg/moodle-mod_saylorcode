@@ -287,3 +287,35 @@ function saylorcode_reset_course_form_definition(MoodleQuickForm $mform): void {
     $mform->addElement('header', 'saylorcodeheader', get_string('modulenameplural', 'mod_saylorcode'));
     $mform->addElement('advcheckbox', 'reset_saylorcode_attempts', get_string('resetattempts', 'mod_saylorcode'));
 }
+
+/**
+ * Add the exercise catalogue to a course's navigation.
+ *
+ * The catalogue spans the whole site, but a teacher reaches for it while
+ * working inside a course, so that is where the way in belongs. Site
+ * administration also carries a link, for people who never open a course.
+ *
+ * @param navigation_node $navigation The course navigation node.
+ * @param stdClass $course The course.
+ * @param context_course $context The course context.
+ */
+function saylorcode_extend_navigation_course(
+    navigation_node $navigation,
+    stdClass $course,
+    context_course $context
+): void {
+    // The capability is held at the system level because the page reaches
+    // across every course, not only this one.
+    if (!has_capability('local/saylorcode:viewlibrary', context_system::instance())) {
+        return;
+    }
+
+    $navigation->add(
+        get_string('catalogue', 'mod_saylorcode'),
+        new moodle_url('/mod/saylorcode/library.php'),
+        navigation_node::TYPE_SETTING,
+        null,
+        'saylorcodecatalogue',
+        new pix_icon('icon', '', 'mod_saylorcode')
+    );
+}
