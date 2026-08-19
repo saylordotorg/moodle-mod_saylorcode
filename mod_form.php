@@ -142,7 +142,7 @@ class mod_saylorcode_mod_form extends moodleform_mod {
         $mform->setDefault('allowdownload', 1);
 
         // Grading.
-        $mform->addElement('header', 'gradingheader', get_string('grade'));
+        $mform->addElement('header', 'gradingheader', get_string('gradenoun'));
 
         $gradingmodes = [
             'none' => get_string('gradingmodenone', 'mod_saylorcode'),
