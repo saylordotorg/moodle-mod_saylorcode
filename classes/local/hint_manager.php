@@ -53,7 +53,11 @@ class hint_manager {
      * @return array Each with a text key.
      */
     public function get_hints(): array {
-        $decoded = json_decode((string) ($this->instance->hints ?? ''), true);
+        $decoded = content::for_instance($this->instance)->get_hints();
+
+        if (!$decoded) {
+            $decoded = json_decode((string) ($this->instance->hints ?? ''), true);
+        }
 
         if (!is_array($decoded)) {
             return [];
@@ -88,8 +92,7 @@ class hint_manager {
      * @return bool
      */
     public function allows_solution(): bool {
-        return !empty($this->instance->allowsolution)
-            && trim((string) ($this->instance->referencesolution ?? '')) !== '';
+        return !empty($this->instance->allowsolution) && trim($this->get_solution()) !== '';
     }
 
     /**
@@ -162,6 +165,17 @@ class hint_manager {
             $DB->update_record('saylorcode_attempts', $attempt);
         }
 
-        return (string) $this->instance->referencesolution;
+        return $this->get_solution();
+    }
+
+    /**
+     * The reference solution, from wherever the exercise resolves.
+     *
+     * @return string
+     */
+    protected function get_solution(): string {
+        $solution = content::for_instance($this->instance)->get_reference_solution();
+
+        return $solution !== '' ? $solution : (string) ($this->instance->referencesolution ?? '');
     }
 }

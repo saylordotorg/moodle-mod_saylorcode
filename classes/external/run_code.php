@@ -131,7 +131,20 @@ class run_code extends external_api {
         ][$mode];
         $manager->save_snapshot($attempt, $decoded, $snapshottype, $session);
 
-        $service = new execution_service($workspace->instance, $workspace->cm);
+        // The step this action belongs to, where it names one the student may be
+        // working on. The service needs it to judge against the step's exercise
+        // rather than the activity's.
+        $step = null;
+
+        if ($stepid > 0) {
+            $steps = new step_manager($workspace->instance);
+
+            if ($steps->is_guided() && $steps->can_open_step((int) $attempt->id, $stepid)) {
+                $step = $steps->get_steps()[$stepid] ?? null;
+            }
+        }
+
+        $service = new execution_service($workspace->instance, $workspace->cm, null, $step);
         $result = $service->execute($attempt, $decoded, $mode, $stdin);
 
         \mod_saylorcode\event\code_executed::create_from_attempt(
