@@ -26,18 +26,23 @@
  * reader falls back to if the rich editor fails to construct, and it keeps the
  * save path identical in both modes.
  *
- * CodeMirror comes from tiny_html, which ships it in Moodle core. Reusing it
- * avoids vendoring a second copy of a large library and inheriting its upkeep,
- * at the cost of depending on a module that core owns rather than a documented
- * API. If that module ever moves, construction throws and the workspace falls
- * back to the textarea rather than breaking.
+ * CodeMirror is vendored with this plugin rather than borrowed from core. The
+ * copy core ships for the TinyMCE HTML plugin exports only HTML, JavaScript and
+ * XML languages, and none of the extension API, so no Java grammar can be added
+ * to it. Borrowing the TypeScript grammar instead was rejected: TypeScript
+ * writes parameter types after a colon, so every "main(String[] args)" in the
+ * course would render as a syntax error on line one.
+ *
+ * The cost is a large dependency this plugin now maintains. If construction
+ * fails for any reason the workspace still falls back to the plain textarea
+ * rather than breaking.
  *
  * @module     mod_saylorcode/editor
  * @copyright  2026 Saylor Academy
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import {EditorState, EditorView, basicSetup} from 'tiny_html/codemirror-lazy';
+import {EditorState, EditorView, basicSetup, java, indentUnit} from 'mod_saylorcode/codemirror-lazy';
 
 /**
  * An editor backed by the plain textarea.
@@ -92,6 +97,13 @@ const richEditor = (textarea, ariaLabel) => {
                 // The basic setup supplies the line number gutter, the fold
                 // gutter, bracket matching, undo history and the keymap.
                 basicSetup,
+
+                // Java, which is the whole reason this bundle is vendored
+                // rather than borrowed from core.
+                java(),
+
+                // Four spaces, which is what the Java the students read uses.
+                indentUnit.of('    '),
                 EditorView.updateListener.of((update) => {
                     if (!update.docChanged) {
                         return;
