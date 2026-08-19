@@ -19,7 +19,10 @@
 .saylorcode-shell {
     --sc-border: var(--border-color, #dee2e6);
     --sc-surface: var(--light, #f8f9fa);
-    --sc-muted: color-mix(in srgb, currentColor 55%, transparent);
+    /* 75% rather than a lighter mix: at 55% the status pill measured
+       3.65:1 against the header surface, below the 4.5:1 that WCAG AA
+       requires for text this size. */
+    --sc-muted: color-mix(in srgb, currentColor 75%, transparent);
     --sc-accent: var(--primary, #0f6cbf);
     --sc-pass: var(--success, #357a32);
     --sc-fail: var(--danger, #ca3120);
@@ -131,7 +134,7 @@
 .saylorcode-shell .saylorcode-save {
     font-size: 0.78rem;
     font-style: italic;
-    opacity: 0.7;
+    opacity: 0.85;
     white-space: nowrap;
 }
 
@@ -718,7 +721,7 @@
     align-items: center;
     gap: 0.6rem;
     font-size: 0.75rem;
-    opacity: 0.75;
+    opacity: 0.9;
 }
 
 .saylorcode-shell .saylorcode-actions-meta .saylorcode-attempts {
