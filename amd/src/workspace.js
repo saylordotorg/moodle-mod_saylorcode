@@ -171,6 +171,20 @@ class Workspace {
             tab.addEventListener('keydown', (e) => this.handleTabKeys(e));
         });
 
+        // Asked before anything replaces the editor contents. Whoever is
+        // about to disturb the editor collects the promise and waits, so
+        // work typed in the last few seconds is not thrown away by a click
+        // that lands before the autosave timer fires.
+        document.addEventListener('saylorcode:flush', (e) => {
+            if (this.dirty && Array.isArray(e.detail.promises)) {
+                if (this.saveTimer) {
+                    window.clearTimeout(this.saveTimer);
+                    this.saveTimer = null;
+                }
+                e.detail.promises.push(this.save());
+            }
+        });
+
         // A guided lesson changes steps without reloading, so it asks the
         // workspace to show different code rather than touching the editor.
         document.addEventListener('saylorcode:setcode', (e) => {

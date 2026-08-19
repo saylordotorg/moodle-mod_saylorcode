@@ -74,10 +74,16 @@ class Guided {
      * @returns {Promise} Resolved once the panel and editor have caught up.
      */
     open(stepid) {
-        return Ajax.call([{
+        // Anything unsaved is written first. Opening a step replaces the
+        // editor contents, and a student who typed a moment ago has not
+        // agreed to lose it.
+        const flush = {promises: []};
+        document.dispatchEvent(new CustomEvent('saylorcode:flush', {detail: flush}));
+
+        return Promise.all(flush.promises).then(() => Ajax.call([{
             methodname: 'mod_saylorcode_open_step',
             args: {cmid: this.cmid, stepid: stepid},
-        }])[0].then((step) => {
+        }])[0]).then((step) => {
             this.render(step);
             this.loadCode(step.code);
 

@@ -60,9 +60,10 @@ class open_step extends external_api {
 
         global $USER;
 
-        $workspace = workspace_context::for_cmid($cmid);
+        // The resolver requires mod/saylorcode:attempt itself, which is the
+        // capability a student needs to work through a lesson.
+        $workspace = workspace_context::resolve($cmid);
         self::validate_context($workspace->context);
-        require_capability('mod/saylorcode:attempt', $workspace->context);
 
         $steps = new step_manager($workspace->instance);
 
