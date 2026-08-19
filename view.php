@@ -80,7 +80,13 @@ if (has_capability('mod/saylorcode:addinstance', $context)) {
             new moodle_url('/mod/saylorcode/preview.php', ['id' => $cm->id]),
             get_string('preview', 'mod_saylorcode'),
             ['class' => 'btn btn-secondary']
-        ) . (has_capability('mod/saylorcode:manageactivities', $context)
+        ) . (has_capability('mod/saylorcode:reviewallattempts', $context)
+            ? ' ' . html_writer::link(
+                new moodle_url('/mod/saylorcode/report.php', ['id' => $cm->id]),
+                get_string('viewreport', 'mod_saylorcode'),
+                ['class' => 'btn btn-secondary']
+            )
+            : '') . (has_capability('mod/saylorcode:manageactivities', $context)
             ? ' ' . html_writer::link(
                 new moodle_url('/mod/saylorcode/steps.php', ['id' => $cm->id]),
                 get_string('managesteps', 'mod_saylorcode'),

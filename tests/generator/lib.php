@@ -50,6 +50,7 @@ class mod_saylorcode_generator extends testing_module_generator {
             'startercode' => "public class Main {\n}\n",
             'testcases' => '',
             'referencesolution' => '',
+            'hints' => '',
             'maxattempts' => 0,
             'gradingmode' => 'tests',
             'allowhints' => 1,

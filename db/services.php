@@ -63,6 +63,14 @@ $functions = [
         'capabilities' => 'mod/saylorcode:attempt',
     ],
 
+    'mod_saylorcode_reveal_hint' => [
+        'classname' => 'mod_saylorcode\external\reveal_hint',
+        'description' => 'Give the student the next hint, or the reference solution where the author allows it.',
+        'type' => 'write',
+        'ajax' => true,
+        'capabilities' => 'mod/saylorcode:attempt',
+    ],
+
     'mod_saylorcode_validate_exercise' => [
         'classname' => 'mod_saylorcode\external\validate_exercise',
         'description' => 'Run an author\'s reference solution against their test cases.',

@@ -217,6 +217,31 @@ class mod_saylorcode_mod_form extends moodleform_mod {
         $mform->addElement('advcheckbox', 'allowhints', get_string('allowhints', 'mod_saylorcode'));
         $mform->setDefault('allowhints', 1);
 
+        // Hints are given one at a time in this order, so the first should be
+        // the smallest nudge that could help and the last the largest.
+        $hintelements = [
+            $mform->createElement(
+                'textarea',
+                'hinttext',
+                get_string('hint', 'mod_saylorcode'),
+                ['rows' => 2, 'cols' => 60]
+            ),
+        ];
+
+        $this->repeat_elements(
+            $hintelements,
+            max(1, $this->count_existing_hints()),
+            ['hinttext' => ['type' => PARAM_TEXT, 'helpbutton' => ['hint', 'mod_saylorcode']]],
+            'hintrepeats',
+            'hintadd',
+            2,
+            get_string('addhints', 'mod_saylorcode'),
+            true
+        );
+
+        $mform->hideIf('hintrepeats', 'allowhints', 'notchecked');
+        $mform->hideIf('hintadd', 'allowhints', 'notchecked');
+
         $mform->addElement('advcheckbox', 'allowsolution', get_string('allowsolution', 'mod_saylorcode'));
         $mform->addHelpButton('allowsolution', 'allowsolution', 'mod_saylorcode');
         $mform->setDefault('allowsolution', 0);
@@ -260,12 +285,35 @@ class mod_saylorcode_mod_form extends moodleform_mod {
     }
 
     /**
+     * How many hints the activity already has.
+     *
+     * @return int
+     */
+    protected function count_existing_hints(): int {
+        $current = $this->current ?? null;
+        if (empty($current->hints)) {
+            return 0;
+        }
+
+        $decoded = json_decode((string) $current->hints, true);
+
+        return is_array($decoded) ? count($decoded) : 0;
+    }
+
+    /**
      * Spread the stored JSON across the repeated form rows.
      *
      * @param array $defaultvalues The values being loaded into the form.
      */
     public function data_preprocessing(&$defaultvalues): void {
         parent::data_preprocessing($defaultvalues);
+
+        $hints = json_decode((string) ($defaultvalues['hints'] ?? ''), true);
+        if (is_array($hints)) {
+            foreach (array_values($hints) as $i => $hint) {
+                $defaultvalues['hinttext[' . $i . ']'] = (string) ($hint['text'] ?? '');
+            }
+        }
 
         $cases = json_decode((string) ($defaultvalues['testcases'] ?? ''), true);
         if (!is_array($cases)) {
@@ -305,6 +353,9 @@ class mod_saylorcode_mod_form extends moodleform_mod {
         // the activity has tests and offer Check with nothing to check.
         $data->testcases = $cases ? json_encode($cases) : '';
 
+        $hints = self::rows_to_hints($data);
+        $data->hints = $hints ? json_encode($hints) : '';
+
         // Same reasoning for the reference solution: a value of pure
         // whitespace is not a solution, and storing it as one makes the
         // catalogue call an unfinished exercise ready.
@@ -313,6 +364,32 @@ class mod_saylorcode_mod_form extends moodleform_mod {
         }
 
         return $data;
+    }
+
+    /**
+     * Turn submitted rows into the stored hint list.
+     *
+     * @param stdClass|array $data Submitted form data.
+     * @return array
+     */
+    public static function rows_to_hints($data): array {
+        $texts = (array) ($data->hinttext ?? []);
+        $hints = [];
+
+        foreach ($texts as $text) {
+            $text = trim((string) $text);
+
+            // Blank rows are how an author leaves room for one more, so they
+            // are dropped rather than stored as an empty hint that would be
+            // handed to a student as help.
+            if ($text === '') {
+                continue;
+            }
+
+            $hints[] = ['text' => $text];
+        }
+
+        return $hints;
     }
 
     /**

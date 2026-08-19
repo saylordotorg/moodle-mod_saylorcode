@@ -26,18 +26,44 @@
  * reader falls back to if the rich editor fails to construct, and it keeps the
  * save path identical in both modes.
  *
- * CodeMirror comes from tiny_html, which ships it in Moodle core. Reusing it
- * avoids vendoring a second copy of a large library and inheriting its upkeep,
- * at the cost of depending on a module that core owns rather than a documented
- * API. If that module ever moves, construction throws and the workspace falls
- * back to the textarea rather than breaking.
+ * CodeMirror is vendored with this plugin rather than borrowed from core. The
+ * copy core ships for the TinyMCE HTML plugin exports only HTML, JavaScript and
+ * XML languages, and none of the extension API, so no Java grammar can be added
+ * to it. Borrowing the TypeScript grammar instead was rejected: TypeScript
+ * writes parameter types after a colon, so every "main(String[] args)" in the
+ * course would render as a syntax error on line one.
+ *
+ * The cost is a large dependency this plugin now maintains. If construction
+ * fails for any reason the workspace still falls back to the plain textarea
+ * rather than breaking.
  *
  * @module     mod_saylorcode/editor
  * @copyright  2026 Saylor Academy
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import {EditorState, EditorView, basicSetup} from 'tiny_html/codemirror-lazy';
+import {EditorState, EditorView, basicSetup, java, indentUnit,
+    HighlightStyle, syntaxHighlighting, tags} from 'mod_saylorcode/codemirror-lazy';
+
+// Token colours as CSS custom properties rather than literals, so they
+// follow the editor's own light and dark surfaces. CodeMirror's default
+// palette is written for a light background and fails WCAG AA badly on the
+// dark one: its keyword purple measures 1.43:1 against our editor.
+const highlighting = HighlightStyle.define([
+    {tag: tags.keyword, color: 'var(--sc-tok-keyword)'},
+    {tag: [tags.name, tags.deleted, tags.character, tags.propertyName, tags.macroName],
+        color: 'var(--sc-tok-name)'},
+    {tag: [tags.function(tags.variableName), tags.labelName], color: 'var(--sc-tok-function)'},
+    {tag: [tags.color, tags.constant(tags.name), tags.standard(tags.name)], color: 'var(--sc-tok-constant)'},
+    {tag: [tags.typeName, tags.className, tags.changed, tags.annotation, tags.modifier,
+        tags.self, tags.namespace], color: 'var(--sc-tok-type)'},
+    {tag: [tags.operator, tags.operatorKeyword, tags.punctuation], color: 'var(--sc-tok-operator)'},
+    {tag: [tags.string, tags.inserted, tags.special(tags.string)], color: 'var(--sc-tok-string)'},
+    {tag: [tags.number, tags.bool, tags.null], color: 'var(--sc-tok-number)'},
+    {tag: [tags.comment, tags.lineComment, tags.blockComment], color: 'var(--sc-tok-comment)',
+        fontStyle: 'italic'},
+    {tag: tags.invalid, color: 'var(--sc-tok-invalid)'},
+]);
 
 /**
  * An editor backed by the plain textarea.
@@ -92,6 +118,14 @@ const richEditor = (textarea, ariaLabel) => {
                 // The basic setup supplies the line number gutter, the fold
                 // gutter, bracket matching, undo history and the keymap.
                 basicSetup,
+
+                // Java, which is the whole reason this bundle is vendored
+                // rather than borrowed from core.
+                java(),
+                syntaxHighlighting(highlighting),
+
+                // Four spaces, which is what the Java the students read uses.
+                indentUnit.of('    '),
                 EditorView.updateListener.of((update) => {
                     if (!update.docChanged) {
                         return;

@@ -219,6 +219,81 @@ class Workspace {
     }
 
     /**
+     * Ask for the next hint, or the reference solution.
+     *
+     * @param {string} what hint or solution.
+     * @returns {Promise} Resolved once the answer is on the page.
+     */
+    reveal(what) {
+        const panel = document.querySelector('[data-region="saylorcode-hints"]');
+
+        if (!panel) {
+            return Promise.resolve();
+        }
+
+        return Ajax.call([{
+            methodname: 'mod_saylorcode_reveal_hint',
+            args: {cmid: this.cmid, what: what},
+        }])[0].then((result) => this.showReveal(panel, result)).catch(Notification.exception);
+    }
+
+    /**
+     * Put a revealed hint or solution on the page.
+     *
+     * Split out of reveal() so the string lookup is a step in one chain rather
+     * than a promise started inside another promise's handler.
+     *
+     * @param {HTMLElement} panel The hints panel.
+     * @param {Object} result The service response.
+     * @returns {Promise} Resolved once the panel is updated.
+     */
+    showReveal(panel, result) {
+        const list = panel.querySelector('[data-region="saylorcode-hintlist"]');
+        const status = panel.querySelector('[data-region="saylorcode-hintstatus"]');
+
+        if (!result.text) {
+            // Nothing left. Said in the status line rather than as an error,
+            // because asking again is a reasonable thing to have done.
+            return getString('hintnone', 'mod_saylorcode').then((text) => {
+                if (status) {
+                    status.textContent = text;
+                }
+
+                return result;
+            });
+        }
+
+        const item = document.createElement('li');
+        item.className = result.issolution ? 'saylorcode-hintitem saylorcode-solutionitem' : 'saylorcode-hintitem';
+
+        if (result.issolution) {
+            // The solution is code, so it keeps its shape.
+            const pre = document.createElement('pre');
+            pre.textContent = result.text;
+            item.appendChild(pre);
+        } else {
+            item.textContent = result.text;
+        }
+
+        if (list) {
+            list.appendChild(item);
+        }
+
+        if (!status || result.issolution) {
+            return Promise.resolve(result);
+        }
+
+        return getString('hintnumbered', 'mod_saylorcode', {
+            number: result.number,
+            total: result.total,
+        }).then((text) => {
+            status.textContent = text;
+
+            return result;
+        });
+    }
+
+    /**
      * Restart the autosave countdown after a change.
      */
     handleInput() {
@@ -388,6 +463,11 @@ class Workspace {
                 this.execute(action).catch(Notification.exception);
                 break;
 
+            case 'hint':
+            case 'solution':
+                this.reveal(action).catch(Notification.exception);
+                break;
+
             case 'submit':
                 this.confirmThen('submitconfirm', () => {
                     this.execute('submit').catch(Notification.exception);
@@ -532,21 +612,38 @@ class Workspace {
      */
     execute(mode) {
         this.setBusy(true);
-        this.setStatus('running');
-        this.clearResults();
-        this.openResults();
 
-        return Ajax.call([{
-            methodname: 'mod_saylorcode_run_code',
-            args: {
-                cmid: this.cmid,
-                mode: mode,
-                files: JSON.stringify(this.getFiles()),
-                stdin: this.stdin ? this.stdin.value : '',
-                browsersession: this.browserSession,
-                stepid: this.currentStepId(),
-            },
-        }])[0].then((result) => {
+        // Everything up to the request is wrapped, because busy is cleared in
+        // a finally() on the promise and a throw before the promise exists
+        // never reaches it. That left the controls greyed out and unusable
+        // with no way back except reloading the page.
+        let request;
+
+        try {
+            this.setStatus('running');
+            this.clearResults();
+            this.openResults();
+
+            request = Ajax.call([{
+                methodname: 'mod_saylorcode_run_code',
+                args: {
+                    cmid: this.cmid,
+                    mode: mode,
+                    files: JSON.stringify(this.getFiles()),
+                    stdin: this.stdin ? this.stdin.value : '',
+                    browsersession: this.browserSession,
+                    stepid: this.currentStepId(),
+                },
+            }])[0];
+        } catch (error) {
+            this.setBusy(false);
+            this.setStatus('error');
+            this.writeConsole([{text: error.message || String(error), kind: 'err'}]);
+
+            return Promise.reject(error);
+        }
+
+        return request.then((result) => {
             this.lastSavedValue = this.code ? this.code.getValue() : '';
             this.dirty = false;
             this.setSaveState('saved');

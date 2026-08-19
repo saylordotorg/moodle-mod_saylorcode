@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<libraries>
+    <library>
+        <location>amd/src/codemirror-lazy.js</location>
+        <name>CodeMirror 6</name>
+        <description>The code editor behind the workspace, bundled with the Java grammar from
+            @codemirror/legacy-modes. Moodle core ships CodeMirror for the TinyMCE HTML plugin, but
+            that module exports only HTML, JavaScript and XML languages and none of the extension
+            API, so a Java editor cannot be built on it.</description>
+        <version>6.0.2</version>
+        <licenseversion></licenseversion>
+        <license>MIT</license>
+        <repository>https://github.com/codemirror/dev</repository>
+    </library>
+</libraries>

@@ -76,5 +76,29 @@ function xmldb_saylorcode_upgrade($oldversion): bool {
         upgrade_mod_savepoint(true, 2026081803, 'saylorcode');
     }
 
+    if ($oldversion < 2026081903) {
+        $table = new xmldb_table('saylorcode');
+        $field = new xmldb_field('hints', XMLDB_TYPE_TEXT, null, null, null, null, null, 'allowdownload');
+
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        $table = new xmldb_table('saylorcode_attempts');
+        $field = new xmldb_field('hintsused', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'currentstepid');
+
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        $field = new xmldb_field('solutionviewed', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0', 'hintsused');
+
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        upgrade_mod_savepoint(true, 2026081903, 'saylorcode');
+    }
+
     return true;
 }

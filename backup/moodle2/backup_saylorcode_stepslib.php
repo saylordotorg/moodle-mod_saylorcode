@@ -49,7 +49,7 @@ class backup_saylorcode_activity_structure_step extends backup_activity_structur
             'versionpolicy', 'pinnedversion', 'profileid', 'layout',
             'entryfilename', 'startercode', 'referencesolution', 'testcases',
             'maxattempts', 'gradingmode', 'allowhints', 'allowsolution',
-            'allowdownload', 'grade', 'completionpasstests',
+            'allowdownload', 'hints', 'grade', 'completionpasstests',
             'completionminscore', 'timecreated', 'timemodified',
         ]);
 
@@ -63,9 +63,9 @@ class backup_saylorcode_activity_structure_step extends backup_activity_structur
 
         $attempts = new backup_nested_element('attempts');
         $attempt = new backup_nested_element('attempt', ['id'], [
-            'userid', 'attemptnumber', 'status', 'currentstepid', 'score',
-            'exerciseversion', 'timestarted', 'timemodified', 'timesubmitted',
-            'timecompleted',
+            'userid', 'attemptnumber', 'status', 'currentstepid', 'hintsused',
+            'solutionviewed', 'score', 'exerciseversion', 'timestarted',
+            'timemodified', 'timesubmitted', 'timecompleted',
         ]);
 
         $stepattempts = new backup_nested_element('stepattempts');

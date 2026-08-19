@@ -46,6 +46,21 @@
     --sc-console-meta: rgba(230, 230, 236, 0.55);
     --sc-err: #ff9b7a;
     --sc-ok: #8fd694;
+
+    /* Syntax colours. Measured against the editor surface rather than taken
+       from CodeMirror's defaults, which are written for a light background:
+       its keyword purple came out at 1.43:1 on this one, against the 4.5:1
+       WCAG AA asks for. */
+    --sc-tok-keyword: #c3a6ff;
+    --sc-tok-name: #e6e6ec;
+    --sc-tok-function: #8fd0ff;
+    --sc-tok-constant: #ffc978;
+    --sc-tok-type: #7fe0c8;
+    --sc-tok-operator: #d0d0dc;
+    --sc-tok-string: #b5e58f;
+    --sc-tok-number: #ffc978;
+    --sc-tok-comment: #a2a2b8;
+    --sc-tok-invalid: #ff9b7a;
 }
 
 .saylorcode-shell {
@@ -60,6 +75,20 @@
 .saylorcode-shell.saylorcode-light {
     --sc-code-bg: #fbfbfd;
     --sc-code-fg: #1f2430;
+
+    /* The same tokens against the light surface. A single palette cannot clear
+       4.5:1 on both a near black and a near white background, so there are
+       two. */
+    --sc-tok-keyword: #6f42c1;
+    --sc-tok-name: #1f2430;
+    --sc-tok-function: #0b5ea8;
+    --sc-tok-constant: #8a4b00;
+    --sc-tok-type: #0a6e5e;
+    --sc-tok-operator: #3d4351;
+    --sc-tok-string: #2f6b18;
+    --sc-tok-number: #8a4b00;
+    --sc-tok-comment: #5c6270;
+    --sc-tok-invalid: #b3261e;
     --sc-gutter-fg: rgba(31, 36, 48, 0.4);
     --sc-gutter-bg: rgba(0, 0, 0, 0.03);
     --sc-code-rule: rgba(0, 0, 0, 0.09);
@@ -920,4 +949,92 @@ button.saylorcode-guided-steplabel:hover {
     font-size: 0.8125rem;
     color: var(--sc-muted);
     margin: 0.75rem 0 0;
+}
+
+/* Instructor progress report ---------------------------------------------- */
+
+.saylorcode-report-totals {
+    margin-bottom: 1.25rem;
+    color: var(--text-muted, #6c757d);
+}
+
+/* The number that says someone needs help. Weight and colour rather than a
+   background, so a column of them still scans as a column of numbers. */
+.saylorcode-progress-stuck {
+    font-weight: 700;
+    color: var(--danger, #ca3120);
+}
+
+/* Hints ------------------------------------------------------------------- */
+
+.saylorcode-hints {
+    border-top: 1px solid var(--sc-border);
+    padding: 0.875rem 1rem;
+}
+
+.saylorcode-hints-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.saylorcode-hints-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin: 0;
+    margin-inline-end: auto;
+}
+
+.saylorcode-hintlist {
+    margin: 0.75rem 0 0;
+    padding-inline-start: 1.25rem;
+}
+
+.saylorcode-hintitem {
+    font-size: 0.875rem;
+    margin-bottom: 0.375rem;
+}
+
+.saylorcode-solutionitem pre {
+    background: var(--sc-code-bg);
+    color: var(--sc-code-fg);
+    border-radius: var(--sc-radius);
+    padding: 0.75rem;
+    margin: 0.25rem 0 0;
+    overflow-x: auto;
+}
+
+.saylorcode-hint-status {
+    font-size: 0.8125rem;
+    color: var(--sc-muted);
+    margin-top: 0.5rem;
+}
+
+/* Analytics measures ------------------------------------------------------ */
+
+.saylorcode-measures {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.saylorcode-measure {
+    flex: 1 1 8rem;
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: 0.4rem;
+    padding: 0.75rem 1rem;
+}
+
+.saylorcode-measure-value {
+    font-size: 1.5rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+}
+
+.saylorcode-measure-label {
+    font-size: 0.8125rem;
+    color: var(--text-muted, #6c757d);
 }
