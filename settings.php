@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Version details for the Saylor Code Studio activity.
+ * Site administration entry for the exercise catalogue.
  *
  * @package    mod_saylorcode
  * @copyright  2026 Saylor Academy
@@ -24,12 +24,12 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->component = 'mod_saylorcode';
-$plugin->version   = 2026081804;
-$plugin->requires  = 2024100700; // Moodle 4.5.
-$plugin->supported = [405, 405];
-$plugin->maturity  = MATURITY_ALPHA;
-$plugin->release   = '0.1.0 (Phase 1 vertical slice)';
-$plugin->dependencies = [
-    'local_saylorcode' => 2026081801,
-];
+// Added outside any fulltree guard so the page stays findable through admin
+// search. It carries its own capability, so it is only offered to people who
+// can actually open it.
+$ADMIN->add('modsettings', new admin_externalpage(
+    'modsaylorcodecatalogue',
+    get_string('catalogue', 'mod_saylorcode'),
+    new moodle_url('/mod/saylorcode/library.php'),
+    'local/saylorcode:viewlibrary'
+));

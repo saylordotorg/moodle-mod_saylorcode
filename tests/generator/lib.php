@@ -49,6 +49,7 @@ class mod_saylorcode_generator extends testing_module_generator {
             'entryfilename' => 'Main.java',
             'startercode' => "public class Main {\n}\n",
             'testcases' => '',
+            'referencesolution' => '',
             'maxattempts' => 0,
             'gradingmode' => 'tests',
             'allowhints' => 1,

@@ -72,6 +72,19 @@ if (!empty($moduleinstance->intro)) {
     );
 }
 
+// Staff hold no attempt, so this page shows them a notice where the workspace
+// would be. The way to see what they actually built belongs right there.
+if (has_capability('mod/saylorcode:addinstance', $context)) {
+    echo html_writer::div(
+        html_writer::link(
+            new moodle_url('/mod/saylorcode/preview.php', ['id' => $cm->id]),
+            get_string('preview', 'mod_saylorcode'),
+            ['class' => 'btn btn-secondary']
+        ),
+        'mb-3'
+    );
+}
+
 echo $renderer->render_activity($moduleinstance, $cm, $context);
 
 echo $OUTPUT->footer();

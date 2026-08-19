@@ -86,6 +86,9 @@ class Workspace {
         this.cmid = parseInt(root.dataset.cmid, 10);
         this.layout = root.dataset.layout || 'split';
         this.entryFilename = root.dataset.entryfilename || 'Main.java';
+        // An author preview renders the real workspace but talks to nothing:
+        // staff hold no attempt, so a save or a run would only fail.
+        this.preview = root.dataset.preview === '1';
 
         this.editor = root.querySelector(SELECTORS.EDITOR);
         this.stdin = root.querySelector(SELECTORS.STDIN);
@@ -180,6 +183,10 @@ class Workspace {
      * Restart the autosave countdown after a change.
      */
     handleInput() {
+        if (this.preview) {
+            return;
+        }
+
         this.dirty = true;
         this.setSaveState('saving');
 
@@ -326,6 +333,13 @@ class Workspace {
      */
     handleAction(action) {
         if (this.busy && action !== 'theme' && action !== 'closedrawer') {
+            return;
+        }
+
+        // Theme and the drawer are pure presentation, so they stay live in a
+        // preview. Everything else would reach a web service the viewer has no
+        // business calling.
+        if (this.preview && action !== 'theme' && action !== 'closedrawer') {
             return;
         }
 
