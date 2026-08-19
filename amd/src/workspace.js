@@ -643,7 +643,14 @@ class Workspace {
             return Promise.reject(error);
         }
 
-        return request.then((result) => {
+        // Adopted into a native promise before the chain is built. Ajax.call()
+        // hands back a jQuery Deferred, and jQuery implements catch but not
+        // finally, so calling finally on it throws a TypeError the moment the
+        // chain is assembled. The then handler is already registered by that
+        // point, so the result still rendered and the status still said "Ran",
+        // while the finally that clears busy was never attached: every control
+        // stayed dead until the page was reloaded.
+        return Promise.resolve(request).then((result) => {
             this.lastSavedValue = this.code ? this.code.getValue() : '';
             this.dirty = false;
             this.setSaveState('saved');
@@ -674,13 +681,16 @@ class Workspace {
     reset() {
         this.setBusy(true);
 
-        return Ajax.call([{
+        // Native promise for the same reason as execute(). This one mattered
+        // twice over: reset is what a student reaches for when the workspace
+        // is stuck, and it was broken by the identical bug.
+        return Promise.resolve(Ajax.call([{
             methodname: 'mod_saylorcode_reset_code',
             args: {
                 cmid: this.cmid,
                 browsersession: this.browserSession,
             },
-        }])[0].then((response) => {
+        }])[0]).then((response) => {
             const files = JSON.parse(response.files);
             const restored = files[this.entryFilename] ?? '';
 

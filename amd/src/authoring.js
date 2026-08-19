@@ -170,7 +170,9 @@ export const init = () => {
             return text;
         }).catch(Notification.exception);
 
-        Ajax.call([{
+        // Native promise: jQuery Deferred has no finally, so building the chain
+        // on one throws and the button below is never re-enabled.
+        Promise.resolve(Ajax.call([{
             methodname: 'mod_saylorcode_validate_exercise',
             args: {
                 courseid: parseInt(fieldValue(SELECTORS.COURSE), 10) || 0,
@@ -179,7 +181,7 @@ export const init = () => {
                 referencesolution: fieldValue(SELECTORS.SOLUTION),
                 testcases: JSON.stringify(collectCases()),
             },
-        }])[0].then((report) => {
+        }])[0]).then((report) => {
             reported = true;
             render(target, report);
             return report;
