@@ -130,7 +130,13 @@ jobs:
 
       - name: Grunt
         if: ${{ !cancelled() }}
-        run: moodle-plugin-ci grunt --max-lint-warnings 0
+        # One warning is expected and cannot be avoided: the vendored
+        # CodeMirror bundle is declared in thirdpartylibs.xml, which puts it in
+        # .eslintignore, and grunt then reports that it passed an ignored file.
+        # The alternatives are worse - dropping the attribution so it gets
+        # linted, or shipping the bundle without a source, which makes grunt
+        # prune the built file. Any second warning still fails this step.
+        run: moodle-plugin-ci grunt --max-lint-warnings 1
 
       - name: PHPUnit tests
         if: ${{ !cancelled() }}
