@@ -602,21 +602,38 @@ class Workspace {
      */
     execute(mode) {
         this.setBusy(true);
-        this.setStatus('running');
-        this.clearResults();
-        this.openResults();
 
-        return Ajax.call([{
-            methodname: 'mod_saylorcode_run_code',
-            args: {
-                cmid: this.cmid,
-                mode: mode,
-                files: JSON.stringify(this.getFiles()),
-                stdin: this.stdin ? this.stdin.value : '',
-                browsersession: this.browserSession,
-                stepid: this.currentStepId(),
-            },
-        }])[0].then((result) => {
+        // Everything up to the request is wrapped, because busy is cleared in
+        // a finally() on the promise and a throw before the promise exists
+        // never reaches it. That left the controls greyed out and unusable
+        // with no way back except reloading the page.
+        let request;
+
+        try {
+            this.setStatus('running');
+            this.clearResults();
+            this.openResults();
+
+            request = Ajax.call([{
+                methodname: 'mod_saylorcode_run_code',
+                args: {
+                    cmid: this.cmid,
+                    mode: mode,
+                    files: JSON.stringify(this.getFiles()),
+                    stdin: this.stdin ? this.stdin.value : '',
+                    browsersession: this.browserSession,
+                    stepid: this.currentStepId(),
+                },
+            }])[0];
+        } catch (error) {
+            this.setBusy(false);
+            this.setStatus('error');
+            this.writeConsole([{text: error.message || String(error), kind: 'err'}]);
+
+            return Promise.reject(error);
+        }
+
+        return request.then((result) => {
             this.lastSavedValue = this.code ? this.code.getValue() : '';
             this.dirty = false;
             this.setSaveState('saved');

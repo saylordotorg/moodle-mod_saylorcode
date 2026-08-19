@@ -62,9 +62,18 @@ class progress_report {
         // Everyone who could attempt, whether or not they have. A student who
         // has not started is exactly who a teacher is looking for, and an inner
         // join to attempts would hide them.
-        [$esql, $eparams] = get_enrolled_sql($this->context, 'mod/saylorcode:attempt', 0, true);
+        //
+        // The join form rather than get_enrolled_sql(), because that returns
+        // positional parameters and the rest of this query is named. Moodle
+        // refuses a query that mixes the two.
+        // The prefix names the user table alias the join expects: an empty prefix
+        // means it builds against "u", which is what this query calls it.
+        $enrolled = get_enrolled_with_capabilities_join($this->context, '', 'mod/saylorcode:attempt', 0, true);
 
-        $userfields = \core_user\fields::for_name()->get_sql('u', false, '', '', false);
+        // Asked for with a leading comma, so it joins the field list cleanly.
+        // Without it the preceding alias and the first name field ran together
+        // into one identifier and the query would not parse at all.
+        $userfields = \core_user\fields::for_name()->get_sql('u', true);
 
         $fields = 'u.id, u.id AS userid' . $userfields->selects . ', '
             . 'a.id AS attemptid, a.status, a.score, a.timestarted, a.timemodified, a.timesubmitted, '
@@ -74,8 +83,8 @@ class progress_report {
             . 'COALESCE(x.failedchecks, 0) AS failedchecks, '
             . 'x.lastrun';
 
-        $from = "($esql) enrolled
-                 JOIN {user} u ON u.id = enrolled.id
+        $from = "{user} u
+                 {$enrolled->joins}
             LEFT JOIN {saylorcode_attempts} a ON a.userid = u.id AND a.saylorcodeid = :instanceid
             LEFT JOIN (
                     SELECT e.attemptid,
@@ -89,11 +98,13 @@ class progress_report {
                   GROUP BY e.attemptid
                  ) x ON x.attemptid = a.id";
 
-        $params = $eparams + [
+        $params = $enrolled->params + [
             'instanceid' => $this->instance->id,
         ];
 
-        return [$fields, $from, '1 = 1', $params];
+        $where = $enrolled->wheres !== '' ? $enrolled->wheres : '1 = 1';
+
+        return [$fields, $from, $where, $params];
     }
 
     /**
@@ -184,6 +195,10 @@ class progress_report {
         // Of the students who ever checked, how many passed everything the
         // first time they asked. A high rate on a hard exercise usually means
         // the tests are too forgiving rather than the class exceptional.
+        //
+        // Ordered by id rather than timecreated: timestamps are whole seconds,
+        // and two checks a moment apart share one, which made every student
+        // who eventually passed look like a first time pass.
         $firsttry = $DB->get_field_sql(
             "SELECT COUNT(1)
                FROM {saylorcode_attempts} a
@@ -192,8 +207,8 @@ class progress_report {
                     SELECT 1 FROM {saylorcode_executions} e
                      WHERE e.attemptid = a.id AND e.mode <> 'run' AND e.teststotal > 0
                        AND e.testspassed = e.teststotal
-                       AND e.timecreated = (
-                           SELECT MIN(e2.timecreated) FROM {saylorcode_executions} e2
+                       AND e.id = (
+                           SELECT MIN(e2.id) FROM {saylorcode_executions} e2
                             WHERE e2.attemptid = a.id AND e2.mode <> 'run' AND e2.teststotal > 0
                        )
                 )",
@@ -290,9 +305,13 @@ class progress_report {
     public function get_totals(): array {
         global $DB;
 
-        [$esql, $eparams] = get_enrolled_sql($this->context, 'mod/saylorcode:attempt', 0, true);
+        $join = get_enrolled_with_capabilities_join($this->context, '', 'mod/saylorcode:attempt', 0, true);
 
-        $enrolled = $DB->count_records_sql("SELECT COUNT(1) FROM ($esql) e", $eparams);
+        $enrolled = $DB->count_records_sql(
+            "SELECT COUNT(1) FROM {user} u {$join->joins}"
+                . ($join->wheres !== '' ? " WHERE {$join->wheres}" : ''),
+            $join->params
+        );
 
         $started = $DB->count_records_sql(
             'SELECT COUNT(1) FROM {saylorcode_attempts} WHERE saylorcodeid = :id',
