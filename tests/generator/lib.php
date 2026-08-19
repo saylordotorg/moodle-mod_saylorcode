@@ -45,6 +45,7 @@ class mod_saylorcode_generator extends testing_module_generator {
             'stableid' => 'CS101-U01-E01',
             'versionpolicy' => 'latest',
             'profileid' => 'java17-console',
+            'layout' => 'split',
             'entryfilename' => 'Main.java',
             'startercode' => "public class Main {\n}\n",
             'testcases' => '',

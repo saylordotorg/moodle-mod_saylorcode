@@ -1,0 +1,755 @@
+/* Saylor Code Studio workspace.
+ *
+ * Everything is scoped under .saylorcode-shell, because Moodle loads plugin
+ * stylesheets site wide and an unscoped rule here would leak into every page.
+ *
+ * Structure and interaction follow the "Embedded IDE layout options" design.
+ * Colour does not: the design's own palette belongs to that document, and a
+ * workspace embedded in a course page should read as part of the course, so
+ * hues come from the Moodle theme's variables and only the editor surface
+ * keeps a fixed dark and light pair of its own.
+ *
+ * Three layouts share one set of markup:
+ *
+ *   split    console beside the code, always visible (default)
+ *   drawer   console below the code, revealed after a run
+ *   tabs     output, input and feedback in a tab strip
+ * ------------------------------------------------------------------------ */
+
+.saylorcode-shell {
+    --sc-border: var(--border-color, #dee2e6);
+    --sc-surface: var(--light, #f8f9fa);
+    --sc-muted: color-mix(in srgb, currentColor 55%, transparent);
+    --sc-accent: var(--primary, #0f6cbf);
+    --sc-pass: var(--success, #357a32);
+    --sc-fail: var(--danger, #ca3120);
+    --sc-radius: 0.4rem;
+
+    /* Neutral hover wash. A flat overlay rather than a colour mix of
+       currentColor, which the CSS validator rejects and which behaves
+       unpredictably where currentColor is inherited. */
+    --sc-hover: rgba(127, 127, 127, 0.14);
+
+    /* Editor surface. Dark by default, with a light pair the student can
+       switch to from the header. */
+    --sc-code-bg: #1e1e2e;
+    --sc-code-fg: #e6e6ec;
+    --sc-gutter-fg: rgba(230, 230, 236, 0.4);
+    --sc-gutter-bg: rgba(255, 255, 255, 0.04);
+    --sc-code-rule: rgba(255, 255, 255, 0.1);
+    --sc-console-bg: #17171f;
+    --sc-console-fg: #e6e6ec;
+    --sc-console-meta: rgba(230, 230, 236, 0.55);
+    --sc-err: #ff9b7a;
+    --sc-ok: #8fd694;
+
+    display: block;
+    margin: 1.5rem 0;
+    border: 1px solid var(--sc-border);
+    border-radius: var(--sc-radius);
+    overflow: hidden;
+    background: var(--body-bg, #fff);
+}
+
+.saylorcode-shell.saylorcode-light {
+    --sc-code-bg: #fbfbfd;
+    --sc-code-fg: #1f2430;
+    --sc-gutter-fg: rgba(31, 36, 48, 0.4);
+    --sc-gutter-bg: rgba(0, 0, 0, 0.03);
+    --sc-code-rule: rgba(0, 0, 0, 0.09);
+    --sc-console-bg: #f4f4f7;
+    --sc-console-fg: #24262f;
+    --sc-console-meta: rgba(36, 38, 47, 0.6);
+    --sc-err: #a3261a;
+    --sc-ok: #276b2b;
+}
+
+/* --- Header ------------------------------------------------------------- */
+
+.saylorcode-shell .saylorcode-filebar {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.9rem;
+    background: var(--sc-surface);
+    border-bottom: 1px solid var(--sc-border);
+    font-size: 0.85rem;
+}
+
+.saylorcode-shell .saylorcode-filename {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-family: var(--font-family-monospace, "SFMono-Regular", Menlo, Consolas, monospace);
+    font-weight: 600;
+}
+
+.saylorcode-shell .saylorcode-filename svg {
+    color: var(--sc-accent);
+    flex: none;
+}
+
+.saylorcode-shell .saylorcode-runtime-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.05rem 0.55rem;
+    border: 1px solid color-mix(in srgb, var(--sc-accent) 55%, transparent);
+    border-radius: 0.25rem;
+    color: var(--sc-accent);
+    font-size: 0.72rem;
+    letter-spacing: 0.02em;
+}
+
+.saylorcode-shell .saylorcode-theme-toggle {
+    margin-left: auto;
+}
+
+/* The pill states how the last action went, in words as well as colour. */
+.saylorcode-shell .saylorcode-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.1rem 0.7rem;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    color: var(--sc-muted);
+    white-space: nowrap;
+}
+
+.saylorcode-shell .saylorcode-pill.is-running {
+    color: var(--sc-accent);
+}
+
+.saylorcode-shell .saylorcode-pill.is-good {
+    color: var(--sc-pass);
+}
+
+.saylorcode-shell .saylorcode-pill.is-bad {
+    color: var(--sc-fail);
+}
+
+.saylorcode-shell .saylorcode-save {
+    font-size: 0.78rem;
+    font-style: italic;
+    opacity: 0.7;
+    white-space: nowrap;
+}
+
+.saylorcode-shell .saylorcode-iconbtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.9rem;
+    height: 1.9rem;
+    padding: 0;
+    border: 0;
+    border-radius: 0.25rem;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    opacity: 0.75;
+}
+
+.saylorcode-shell .saylorcode-iconbtn:hover {
+    opacity: 1;
+    background: var(--sc-hover);
+}
+
+.saylorcode-shell .saylorcode-iconbtn:focus-visible {
+    outline: 2px solid var(--sc-accent);
+    outline-offset: 1px;
+}
+
+/* Only one of the two glyphs shows, matching the state being offered. */
+.saylorcode-shell .saylorcode-icon-sun {
+    display: none;
+}
+
+.saylorcode-shell.saylorcode-light .saylorcode-icon-moon {
+    display: none;
+}
+
+.saylorcode-shell.saylorcode-light .saylorcode-icon-sun {
+    display: block;
+}
+
+/* --- Body and layouts --------------------------------------------------- */
+
+.saylorcode-shell .saylorcode-body {
+    display: grid;
+    grid-template-columns: 1fr;
+}
+
+/* Split: console beside the code once the page is wide enough for both. */
+@media (min-width: 992px) {
+    .saylorcode-shell.saylorcode-layout-split .saylorcode-body {
+        grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+    }
+
+    .saylorcode-shell.saylorcode-layout-split .saylorcode-pane-results {
+        border-top: 0;
+        border-left: 1px solid var(--sc-code-rule);
+    }
+}
+
+.saylorcode-shell .saylorcode-pane-editor {
+    min-width: 0;
+    background: var(--sc-code-bg);
+}
+
+.saylorcode-shell .saylorcode-pane-results {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--sc-console-bg);
+    border-top: 1px solid var(--sc-code-rule);
+}
+
+/* Drawer: the results stay out of the way until there is something to show. */
+.saylorcode-shell.saylorcode-layout-drawer .saylorcode-pane-results {
+    display: none;
+}
+
+.saylorcode-shell.saylorcode-layout-drawer.saylorcode-open .saylorcode-pane-results {
+    display: flex;
+    animation: saylorcode-drawer 0.22s ease both;
+}
+
+@keyframes saylorcode-drawer {
+    from {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .saylorcode-shell.saylorcode-layout-drawer.saylorcode-open .saylorcode-pane-results {
+        animation: none;
+    }
+}
+
+/* Tabs: the input panel is a tab rather than a disclosure. */
+.saylorcode-shell:not(.saylorcode-layout-tabs) .saylorcode-panel-input {
+    border-top: 1px solid var(--sc-border);
+    background: var(--body-bg, #fff);
+    padding: 0.55rem 0.9rem;
+}
+
+.saylorcode-shell .saylorcode-tabs {
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
+    padding: 0 0.6rem;
+    background: var(--sc-surface);
+    border-bottom: 1px solid var(--sc-border);
+}
+
+.saylorcode-shell .saylorcode-tab {
+    padding: 0.5rem 0.75rem;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    background: none;
+    color: var(--sc-muted);
+    font-size: 0.82rem;
+    cursor: pointer;
+}
+
+.saylorcode-shell .saylorcode-tab:hover {
+    color: var(--sc-accent);
+}
+
+.saylorcode-shell .saylorcode-tab[aria-selected="true"] {
+    color: var(--sc-accent);
+    border-bottom-color: var(--sc-accent);
+    font-weight: 600;
+}
+
+.saylorcode-shell .saylorcode-tab:focus-visible {
+    outline: 2px solid var(--sc-accent);
+    outline-offset: -2px;
+}
+
+.saylorcode-shell .saylorcode-tabs-meta {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding-right: 0.3rem;
+}
+
+/* --- Editor ------------------------------------------------------------- */
+
+.saylorcode-shell .saylorcode-editor {
+    display: block;
+    width: 100%;
+    min-height: 15rem;
+    margin: 0;
+    padding: 0.9rem 1rem;
+    border: 0;
+    border-radius: 0;
+    resize: vertical;
+    background: var(--sc-code-bg);
+    color: var(--sc-code-fg);
+    font-family: var(--font-family-monospace, "SFMono-Regular", Menlo, Consolas, monospace);
+    font-size: 0.84rem;
+    line-height: 1.65;
+    tab-size: 4;
+    white-space: pre;
+    overflow-wrap: normal;
+    overflow-x: auto;
+}
+
+.saylorcode-shell .saylorcode-editor:focus {
+    outline: 2px solid var(--sc-accent);
+    outline-offset: -2px;
+}
+
+.saylorcode-shell .saylorcode-editor-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* CodeMirror, when it is available. */
+.saylorcode-shell .saylorcode-cm .cm-editor {
+    background: var(--sc-code-bg);
+    color: var(--sc-code-fg);
+    font-size: 0.84rem;
+    max-height: 30rem;
+}
+
+.saylorcode-shell .saylorcode-cm .cm-editor.cm-focused {
+    outline: 2px solid var(--sc-accent);
+    outline-offset: -2px;
+}
+
+.saylorcode-shell .saylorcode-cm .cm-scroller {
+    font-family: var(--font-family-monospace, "SFMono-Regular", Menlo, Consolas, monospace);
+    line-height: 1.65;
+    min-height: 15rem;
+}
+
+.saylorcode-shell .saylorcode-cm .cm-content {
+    padding: 0.75rem 0;
+    caret-color: var(--sc-accent);
+}
+
+.saylorcode-shell .saylorcode-cm .cm-gutters {
+    background: var(--sc-gutter-bg);
+    color: var(--sc-gutter-fg);
+    border-right: 1px solid var(--sc-code-rule);
+}
+
+.saylorcode-shell .saylorcode-cm .cm-lineNumbers .cm-gutterElement {
+    padding: 0 0.55rem 0 0.8rem;
+    min-width: 2.2rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.saylorcode-shell .saylorcode-cm .cm-foldGutter .cm-gutterElement {
+    padding: 0 0.3rem;
+    cursor: pointer;
+    opacity: 0.55;
+}
+
+.saylorcode-shell .saylorcode-cm .cm-foldGutter .cm-gutterElement:hover {
+    opacity: 1;
+}
+
+.saylorcode-shell .saylorcode-cm .cm-foldPlaceholder {
+    background: color-mix(in srgb, var(--sc-code-fg) 14%, transparent);
+    border: 1px solid color-mix(in srgb, var(--sc-code-fg) 25%, transparent);
+    border-radius: 0.2rem;
+    color: var(--sc-code-fg);
+    padding: 0 0.35rem;
+    margin: 0 0.2rem;
+}
+
+.saylorcode-shell .saylorcode-cm .cm-activeLine {
+    background: color-mix(in srgb, var(--sc-code-fg) 6%, transparent);
+}
+
+.saylorcode-shell .saylorcode-cm .cm-activeLineGutter {
+    background: color-mix(in srgb, var(--sc-code-fg) 8%, transparent);
+    color: var(--sc-code-fg);
+}
+
+.saylorcode-shell .saylorcode-cm .cm-cursor {
+    border-left-color: var(--sc-accent);
+}
+
+.saylorcode-shell .saylorcode-cm .cm-matchingBracket {
+    background: color-mix(in srgb, var(--sc-code-fg) 18%, transparent);
+    outline: 1px solid color-mix(in srgb, var(--sc-code-fg) 35%, transparent);
+}
+
+/* --- Console ------------------------------------------------------------ */
+
+.saylorcode-shell .saylorcode-console-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.45rem 0.85rem;
+    border-bottom: 1px solid var(--sc-code-rule);
+    color: var(--sc-console-meta);
+}
+
+.saylorcode-shell .saylorcode-console-label {
+    font-size: 0.68rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+}
+
+.saylorcode-shell .saylorcode-ran {
+    margin-left: auto;
+    font-size: 0.7rem;
+    font-style: italic;
+    font-variant-numeric: tabular-nums;
+    color: var(--sc-console-meta);
+}
+
+.saylorcode-shell .saylorcode-tabs-meta .saylorcode-ran {
+    margin-left: 0;
+    color: var(--sc-muted);
+}
+
+.saylorcode-shell .saylorcode-drawer-close {
+    margin-left: 0.2rem;
+    color: var(--sc-console-meta);
+}
+
+.saylorcode-shell .saylorcode-console {
+    flex: 1;
+    margin: 0;
+    padding: 0.8rem 0.9rem;
+    min-height: 6rem;
+    max-height: 22rem;
+    overflow: auto;
+    background: var(--sc-console-bg);
+    color: var(--sc-console-fg);
+    font-family: var(--font-family-monospace, monospace);
+    font-size: 0.8rem;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.saylorcode-shell .saylorcode-console-idle {
+    margin: 0;
+    font-family: inherit;
+    font-size: 0.78rem;
+    font-style: italic;
+    color: var(--sc-console-meta);
+}
+
+.saylorcode-shell .saylorcode-console-line {
+    animation: saylorcode-line 0.22s ease both;
+}
+
+@keyframes saylorcode-line {
+    from {
+        opacity: 0;
+        transform: translateY(3px);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .saylorcode-shell .saylorcode-console-line {
+        animation: none;
+    }
+}
+
+.saylorcode-shell .saylorcode-line-err {
+    color: var(--sc-err);
+}
+
+.saylorcode-shell .saylorcode-line-ok {
+    color: var(--sc-ok);
+}
+
+.saylorcode-shell .saylorcode-verdict {
+    margin: 0;
+    padding: 0.6rem 0.9rem;
+    border-top: 1px solid var(--sc-code-rule);
+    background: var(--sc-console-bg);
+    color: var(--sc-console-fg);
+    font-size: 0.82rem;
+}
+
+.saylorcode-shell .saylorcode-verdict.is-good {
+    color: var(--sc-ok);
+}
+
+.saylorcode-shell .saylorcode-verdict.is-bad {
+    color: var(--sc-err);
+}
+
+/* --- Test outcomes ------------------------------------------------------ */
+
+.saylorcode-shell .saylorcode-tests:empty {
+    display: none;
+}
+
+.saylorcode-shell .saylorcode-testlist {
+    margin: 0;
+    padding: 0.5rem 0.9rem 0.7rem;
+    list-style: none;
+    background: var(--sc-console-bg);
+}
+
+.saylorcode-shell .saylorcode-testlist li {
+    padding: 0.3rem 0 0.3rem 0.6rem;
+    border-left: 3px solid transparent;
+    margin-bottom: 0.25rem;
+}
+
+.saylorcode-shell .saylorcode-test-pass {
+    border-left-color: var(--sc-ok);
+}
+
+.saylorcode-shell .saylorcode-test-fail {
+    border-left-color: var(--sc-err);
+}
+
+.saylorcode-shell .saylorcode-test-name {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--sc-console-fg);
+}
+
+.saylorcode-shell .saylorcode-test-pass .saylorcode-test-name {
+    color: var(--sc-ok);
+}
+
+.saylorcode-shell .saylorcode-test-fail .saylorcode-test-name {
+    color: var(--sc-err);
+}
+
+.saylorcode-shell .saylorcode-test-feedback {
+    margin: 0.2rem 0 0;
+    font-size: 0.78rem;
+    color: var(--sc-console-meta);
+}
+
+/* --- Standard input ----------------------------------------------------- */
+
+.saylorcode-shell .saylorcode-stdin-label {
+    display: block;
+    margin-bottom: 0.3rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    opacity: 0.7;
+}
+
+.saylorcode-shell:not(.saylorcode-layout-tabs) .saylorcode-stdin-label {
+    display: none;
+}
+
+.saylorcode-shell .saylorcode-stdin {
+    width: 100%;
+    padding: 0.4rem 0.55rem;
+    border: 1px solid var(--sc-border);
+    border-radius: 0.25rem;
+    background: var(--body-bg, #fff);
+    color: inherit;
+    font-family: var(--font-family-monospace, monospace);
+    font-size: 0.8rem;
+    resize: vertical;
+}
+
+.saylorcode-shell .saylorcode-panel-input {
+    order: 99;
+}
+
+/* --- Feedback tab ------------------------------------------------------- */
+
+.saylorcode-shell .saylorcode-panel-feedback {
+    padding: 0.9rem;
+    background: var(--body-bg, #fff);
+}
+
+.saylorcode-shell .saylorcode-feedback-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+}
+
+@media (min-width: 640px) {
+    .saylorcode-shell .saylorcode-feedback-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+.saylorcode-shell .saylorcode-minihead {
+    margin: 0 0 0.35rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    opacity: 0.65;
+}
+
+.saylorcode-shell .saylorcode-expected {
+    padding-left: 0.7rem;
+    border-left: 2px solid color-mix(in srgb, var(--sc-accent) 45%, transparent);
+    font-family: var(--font-family-monospace, monospace);
+    font-size: 0.8rem;
+    line-height: 1.7;
+}
+
+.saylorcode-shell .saylorcode-attempts {
+    margin: 0 0 0.25rem;
+    font-size: 0.85rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.saylorcode-shell .saylorcode-feedback-verdict {
+    margin: 0;
+    font-size: 0.82rem;
+    font-style: italic;
+    opacity: 0.75;
+}
+
+.saylorcode-shell .saylorcode-feedback-verdict.is-good {
+    color: var(--sc-pass);
+    font-style: normal;
+    opacity: 1;
+}
+
+.saylorcode-shell .saylorcode-feedback-verdict.is-bad {
+    color: var(--sc-fail);
+    font-style: normal;
+    opacity: 1;
+}
+
+/* --- Actions ------------------------------------------------------------ */
+
+.saylorcode-shell .saylorcode-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.65rem 0.9rem;
+    border-top: 1px solid var(--sc-border);
+    background: var(--sc-surface);
+}
+
+.saylorcode-shell .saylorcode-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 2.2rem;
+    padding: 0.35rem 0.85rem;
+    border: 1px solid transparent;
+    border-radius: 0.3rem;
+    background: transparent;
+    color: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: background-color 0.12s ease, transform 0.1s ease;
+}
+
+.saylorcode-shell .saylorcode-btn:active {
+    transform: translateY(1px);
+}
+
+.saylorcode-shell .saylorcode-btn:focus-visible {
+    outline: 2px solid var(--sc-accent);
+    outline-offset: 2px;
+}
+
+.saylorcode-shell .saylorcode-btn-primary {
+    color: #fff;
+    background: var(--sc-accent);
+    border-color: var(--sc-accent);
+    padding-inline: 1.05rem;
+}
+
+.saylorcode-shell .saylorcode-btn-primary:hover {
+    background: color-mix(in srgb, var(--sc-accent) 85%, black);
+}
+
+.saylorcode-shell .saylorcode-btn-secondary {
+    border-color: var(--sc-border);
+}
+
+.saylorcode-shell .saylorcode-btn-secondary:hover {
+    background: var(--sc-hover);
+}
+
+.saylorcode-shell .saylorcode-btn-ghost {
+    color: var(--sc-accent);
+    font-weight: 500;
+    padding-inline: 0.55rem;
+}
+
+.saylorcode-shell .saylorcode-btn-ghost:hover {
+    background: color-mix(in srgb, var(--sc-accent) 10%, transparent);
+}
+
+.saylorcode-shell .saylorcode-actions-divider {
+    width: 1px;
+    height: 1.25rem;
+    background: var(--sc-border);
+}
+
+.saylorcode-shell .saylorcode-actions-meta {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.75rem;
+    opacity: 0.75;
+}
+
+.saylorcode-shell .saylorcode-actions-meta .saylorcode-attempts {
+    margin: 0;
+    font-size: 0.75rem;
+}
+
+.saylorcode-shell .saylorcode-kbd {
+    padding: 0.1rem 0.35rem;
+    border: 1px solid var(--sc-border);
+    border-bottom-width: 2px;
+    border-radius: 0.2rem;
+    background: var(--body-bg, #fff);
+    color: inherit;
+    font-family: var(--font-family-monospace, monospace);
+    font-size: 0.68rem;
+}
+
+/* While work is in flight the whole row is inert, so the state is visible and
+   a second Run cannot be queued behind the first. */
+.saylorcode-shell.saylorcode-busy .saylorcode-actions .saylorcode-btn {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+/* --- Embedded ----------------------------------------------------------- */
+
+.saylorcode-embed .saylorcode-shell {
+    margin: 1.25rem 0;
+}
+
+.saylorcode-embed-linkonly {
+    margin: 1rem 0;
+}
