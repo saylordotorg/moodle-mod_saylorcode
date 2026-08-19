@@ -156,6 +156,133 @@ class progress_report {
     }
 
     /**
+     * The learning analytics the stored data can actually support.
+     *
+     * Specification section 18.2 asks for more than this. Two of its measures
+     * are deliberately absent rather than approximated:
+     *
+     * Most frequently failed tests needs per test outcomes, and executions
+     * store only how many passed out of how many ran. Guessing which test
+     * failed from a count would be fiction.
+     *
+     * Results by exercise version needs versions, which arrive with the
+     * exercise library.
+     *
+     * @return array
+     */
+    public function get_analytics(): array {
+        global $DB;
+
+        $completed = $DB->count_records_select(
+            'saylorcode_attempts',
+            'saylorcodeid = :id AND timecompleted IS NOT NULL',
+            ['id' => $this->instance->id]
+        );
+
+        $totals = $this->get_totals();
+
+        // Of the students who ever checked, how many passed everything the
+        // first time they asked. A high rate on a hard exercise usually means
+        // the tests are too forgiving rather than the class exceptional.
+        $firsttry = $DB->get_field_sql(
+            "SELECT COUNT(1)
+               FROM {saylorcode_attempts} a
+              WHERE a.saylorcodeid = :id
+                AND EXISTS (
+                    SELECT 1 FROM {saylorcode_executions} e
+                     WHERE e.attemptid = a.id AND e.mode <> 'run' AND e.teststotal > 0
+                       AND e.testspassed = e.teststotal
+                       AND e.timecreated = (
+                           SELECT MIN(e2.timecreated) FROM {saylorcode_executions} e2
+                            WHERE e2.attemptid = a.id AND e2.mode <> 'run' AND e2.teststotal > 0
+                       )
+                )",
+            ['id' => $this->instance->id]
+        );
+
+        $everchecked = $DB->get_field_sql(
+            "SELECT COUNT(DISTINCT a.id)
+               FROM {saylorcode_attempts} a
+               JOIN {saylorcode_executions} e ON e.attemptid = a.id
+              WHERE a.saylorcodeid = :id AND e.mode <> 'run' AND e.teststotal > 0",
+            ['id' => $this->instance->id]
+        );
+
+        $checks = $DB->get_fieldset_sql(
+            "SELECT COUNT(e.id) AS checks
+               FROM {saylorcode_attempts} a
+               JOIN {saylorcode_executions} e ON e.attemptid = a.id
+              WHERE a.saylorcodeid = :id AND a.timecompleted IS NOT NULL AND e.mode <> 'run'
+           GROUP BY a.id",
+            ['id' => $this->instance->id]
+        );
+
+        $usedhints = $DB->count_records_select(
+            'saylorcode_attempts',
+            'saylorcodeid = :id AND hintsused > 0',
+            ['id' => $this->instance->id]
+        );
+
+        $sawsolution = $DB->count_records_select(
+            'saylorcode_attempts',
+            'saylorcodeid = :id AND solutionviewed > 0',
+            ['id' => $this->instance->id]
+        );
+
+        return [
+            'completed' => $completed,
+            'completionrate' => self::rate($completed, $totals['started']),
+            'firsttrypassrate' => self::rate((int) $firsttry, (int) $everchecked),
+            'medianchecks' => self::median(array_map('intval', $checks)),
+            'hintrate' => self::rate($usedhints, $totals['started']),
+            'solutionrate' => self::rate($sawsolution, $totals['started']),
+        ];
+    }
+
+    /**
+     * A percentage, or null where the denominator is zero.
+     *
+     * Null rather than zero, because "no one has done this yet" and "everyone
+     * failed" are different facts and a report that conflates them misleads.
+     *
+     * @param int $part The numerator.
+     * @param int $whole The denominator.
+     * @return int|null
+     */
+    protected static function rate(int $part, int $whole): ?int {
+        if ($whole <= 0) {
+            return null;
+        }
+
+        return (int) round($part / $whole * 100);
+    }
+
+    /**
+     * The middle value, or null for nothing.
+     *
+     * Median rather than mean, because one student who checked forty times
+     * drags an average somewhere no individual student was.
+     *
+     * @param array $values The values.
+     * @return float|null
+     */
+    protected static function median(array $values): ?float {
+        if (!$values) {
+            return null;
+        }
+
+        sort($values);
+        $count = count($values);
+        $middle = intdiv($count, 2);
+
+        if ($count % 2) {
+            return (float) $values[$middle];
+        }
+
+        return ($values[$middle - 1] + $values[$middle]) / 2;
+    }
+
+    /**
      * Headline numbers for the activity.
      *
      * @return array

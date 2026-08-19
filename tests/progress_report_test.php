@@ -221,6 +221,66 @@ final class progress_report_test extends \advanced_testcase {
     }
 
     /**
+     * A rate with no one in the denominator is unknown, not nought.
+     *
+     * "No one has tried this yet" and "everyone failed" are different facts,
+     * and a report that shows both as 0% misleads the person reading it.
+     */
+    public function test_rates_are_unknown_rather_than_zero_when_nobody_has_tried(): void {
+        $this->getDataGenerator()->create_and_enrol($this->course, 'student');
+
+        $analytics = $this->report->get_analytics();
+
+        $this->assertNull($analytics['completionrate']);
+        $this->assertNull($analytics['firsttrypassrate']);
+        $this->assertNull($analytics['medianchecks']);
+    }
+
+    /**
+     * A student who passed on their first check counts as a first try pass.
+     */
+    public function test_the_first_try_pass_rate_looks_at_the_first_check(): void {
+        $lucky = $this->getDataGenerator()->create_and_enrol($this->course, 'student');
+        $struggler = $this->getDataGenerator()->create_and_enrol($this->course, 'student');
+
+        $manager = new attempt_manager($this->instance);
+        $one = $manager->get_or_create_attempt((int) $lucky->id);
+        $two = $manager->get_or_create_attempt((int) $struggler->id);
+
+        // A run first, which has no tests and must not count as the first check.
+        $this->record_execution((int) $one->id, 'run');
+        $this->record_execution((int) $one->id, 'check', 2, 2);
+
+        $this->record_execution((int) $two->id, 'check', 0, 2);
+        $this->record_execution((int) $two->id, 'check', 2, 2);
+
+        $analytics = $this->report->get_analytics();
+
+        $this->assertSame(50, $analytics['firsttrypassrate']);
+    }
+
+    /**
+     * Hint and solution use is reported as a rate.
+     */
+    public function test_hint_and_solution_rates(): void {
+        global $DB;
+
+        $one = $this->getDataGenerator()->create_and_enrol($this->course, 'student');
+        $two = $this->getDataGenerator()->create_and_enrol($this->course, 'student');
+
+        $manager = new attempt_manager($this->instance);
+        $first = $manager->get_or_create_attempt((int) $one->id);
+        $manager->get_or_create_attempt((int) $two->id);
+
+        $DB->set_field('saylorcode_attempts', 'hintsused', 2, ['id' => $first->id]);
+
+        $analytics = $this->report->get_analytics();
+
+        $this->assertSame(50, $analytics['hintrate']);
+        $this->assertSame(0, $analytics['solutionrate']);
+    }
+
+    /**
      * An activity with no steps has no step summary.
      */
     public function test_an_activity_without_steps_has_no_step_summary(): void {

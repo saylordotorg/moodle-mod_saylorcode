@@ -981,3 +981,31 @@ button.saylorcode-guided-steplabel:hover {
     color: var(--sc-muted);
     margin-top: 0.5rem;
 }
+
+/* Analytics measures ------------------------------------------------------ */
+
+.saylorcode-measures {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.saylorcode-measure {
+    flex: 1 1 8rem;
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: 0.4rem;
+    padding: 0.75rem 1rem;
+}
+
+.saylorcode-measure-value {
+    font-size: 1.5rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+}
+
+.saylorcode-measure-label {
+    font-size: 0.8125rem;
+    color: var(--text-muted, #6c757d);
+}

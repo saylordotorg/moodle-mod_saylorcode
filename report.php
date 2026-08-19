@@ -63,6 +63,39 @@ if (!$table->is_downloading()) {
         'saylorcode-report-totals'
     );
 
+    $analytics = $report->get_analytics();
+
+    $measures = [
+        'analyticscompletionrate' => $analytics['completionrate'],
+        'analyticsfirsttry' => $analytics['firsttrypassrate'],
+        'analyticshintrate' => $analytics['hintrate'],
+        'analyticssolutionrate' => $analytics['solutionrate'],
+    ];
+
+    $cards = '';
+    foreach ($measures as $key => $value) {
+        // A missing denominator reads as "nobody has done this yet", which is
+        // a different fact from nought per cent.
+        $shown = $value === null ? get_string('analyticsnodata', 'mod_saylorcode') : $value . '%';
+
+        $cards .= html_writer::div(
+            html_writer::div($shown, 'saylorcode-measure-value')
+                . html_writer::div(get_string($key, 'mod_saylorcode'), 'saylorcode-measure-label'),
+            'saylorcode-measure'
+        );
+    }
+
+    $median = $analytics['medianchecks'];
+    $cards .= html_writer::div(
+        html_writer::div(
+            $median === null ? get_string('analyticsnodata', 'mod_saylorcode') : format_float($median, 1),
+            'saylorcode-measure-value'
+        ) . html_writer::div(get_string('analyticsmedianchecks', 'mod_saylorcode'), 'saylorcode-measure-label'),
+        'saylorcode-measure'
+    );
+
+    echo html_writer::div($cards, 'saylorcode-measures');
+
     // The step view comes first for a guided lesson, because a step everyone
     // is stuck on is a fact about the lesson, and worth knowing before reading
     // a list of names.
