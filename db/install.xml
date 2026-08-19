@@ -19,6 +19,7 @@
         <FIELD NAME="layout" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="split" SEQUENCE="false" COMMENT="split, drawer or tabs."/>
         <FIELD NAME="entryfilename" TYPE="char" LENGTH="255" NOTNULL="true" DEFAULT="Main.java" SEQUENCE="false" COMMENT="Entry point filename the student edits."/>
         <FIELD NAME="startercode" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Initial content of the entry file. Superseded by the exercise library when it lands."/>
+        <FIELD NAME="referencesolution" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="A solution that must pass every test case before the exercise is fit to publish."/>
         <FIELD NAME="testcases" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="JSON encoded standard input and output test cases."/>
         <FIELD NAME="maxattempts" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="0 means unlimited."/>
         <FIELD NAME="gradingmode" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="tests" SEQUENCE="false" COMMENT="none, completion, tests, manual or mixed."/>

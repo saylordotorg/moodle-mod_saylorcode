@@ -54,4 +54,12 @@ $functions = [
         'ajax' => true,
         'capabilities' => 'mod/saylorcode:attempt',
     ],
+
+    'mod_saylorcode_validate_exercise' => [
+        'classname' => 'mod_saylorcode\external\validate_exercise',
+        'description' => 'Run an author\'s reference solution against their test cases.',
+        'type' => 'read',
+        'ajax' => true,
+        'capabilities' => 'mod/saylorcode:addinstance',
+    ],
 ];
