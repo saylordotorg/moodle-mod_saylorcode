@@ -303,6 +303,7 @@ $string['submitconfirm'] = 'Submitting records an official attempt. Do you want 
 $string['tabfeedback'] = 'Feedback';
 $string['tabinput'] = 'Input';
 $string['taboutput'] = 'Output';
+$string['taskpurgeexecutionlogs'] = 'Delete execution records past their retention period';
 $string['tcdefaultname'] = 'Test {$a}';
 $string['tcexpected'] = 'Expected output';
 $string['tcexpectedrequired'] = 'A named test case needs expected output. Clear the name to drop the row instead.';
