@@ -1,0 +1,28 @@
+{
+  "name": "moodle-mod_saylorcode",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Development-only tooling for mod_saylorcode. Moodle does not read this file; it exists so the AMD modules can be unit tested.",
+  "scripts": {
+    "test": "jest"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.24.0",
+    "@babel/preset-env": "^7.24.0",
+    "babel-jest": "^29.7.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0"
+  },
+  "jest": {
+    "testEnvironment": "jsdom",
+    "roots": ["<rootDir>/tests/js"],
+    "moduleNameMapper": {
+      "^core/ajax$": "<rootDir>/tests/js/mocks/ajax.js",
+      "^core/str$": "<rootDir>/tests/js/mocks/str.js",
+      "^core/notification$": "<rootDir>/tests/js/mocks/notification.js",
+      "^mod_saylorcode/editor$": "<rootDir>/tests/js/mocks/editor.js",
+      "^mod_saylorcode/(.*)$": "<rootDir>/amd/src/$1.js"
+    },
+    "testMatch": ["<rootDir>/tests/js/**/*.test.js"]
+  }
+}

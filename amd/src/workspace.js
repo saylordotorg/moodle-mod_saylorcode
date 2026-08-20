@@ -73,8 +73,12 @@ const FAILED_STATES = [
 
 /**
  * Controls one workspace instance.
+ *
+ * Exported for the unit tests, which drive it directly rather than through
+ * init(): the interesting behaviour is the state machine, and init() only
+ * finds elements and constructs this.
  */
-class Workspace {
+export class Workspace {
 
     /**
      * Wire up a workspace.
