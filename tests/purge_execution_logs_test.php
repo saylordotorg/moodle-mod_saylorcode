@@ -39,15 +39,16 @@ final class purge_execution_logs_test extends \advanced_testcase {
      * @param int $instanceid The activity.
      * @param int $attemptid The attempt.
      * @param int $age How long ago it ran, in seconds.
+     * @param string $mode run, check or submit.
      * @return int The execution id.
      */
-    protected function execution(int $instanceid, int $attemptid, int $age): int {
+    protected function execution(int $instanceid, int $attemptid, int $age, string $mode = 'check'): int {
         global $DB;
 
         $executionid = $DB->insert_record('saylorcode_executions', (object) [
-            'requestid' => 'req-' . $age,
+            'requestid' => 'req-' . $age . '-' . $mode,
             'attemptid' => $attemptid,
-            'mode' => 'check',
+            'mode' => $mode,
             'profileid' => 'java17-console',
             'state' => 'completed',
             'queuetime' => 0,
@@ -174,6 +175,100 @@ final class purge_execution_logs_test extends \advanced_testcase {
 
         $this->assertSame(1, $DB->count_records('saylorcode_executions'));
         $this->assertSame(1, $DB->count_records('saylorcode_testresults'));
+    }
+
+    /**
+     * Submissions survive the purge, however old they are.
+     *
+     * The attempt limit is enforced by counting submit rows in this table, so
+     * deleting them gives a student back submissions they have already spent.
+     * An activity capped at two attempts would become uncapped the moment the
+     * retention period elapsed, and nothing would report that it had happened.
+     *
+     * @return void
+     */
+    public function test_submissions_are_never_purged(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+        set_config('executionlogretention', 30 * DAYSECS, 'local_saylorcode');
+
+        [$instanceid, $attemptid] = $this->scenario();
+        $submit = $this->execution($instanceid, $attemptid, 900 * DAYSECS, 'submit');
+        $check = $this->execution($instanceid, $attemptid, 900 * DAYSECS, 'check');
+        $run = $this->execution($instanceid, $attemptid, 900 * DAYSECS, 'run');
+
+        ob_start();
+        (new purge_execution_logs())->execute();
+        ob_end_clean();
+
+        $this->assertTrue(
+            $DB->record_exists('saylorcode_executions', ['id' => $submit]),
+            'A submission was purged, which returns a spent attempt to the student.'
+        );
+        $this->assertFalse($DB->record_exists('saylorcode_executions', ['id' => $check]));
+        $this->assertFalse($DB->record_exists('saylorcode_executions', ['id' => $run]));
+
+        // The count the attempt limit is enforced from must be unchanged.
+        $this->assertSame(1, $DB->count_records('saylorcode_executions', [
+            'attemptid' => $attemptid,
+            'mode' => 'submit',
+        ]));
+    }
+
+    /**
+     * More rows than one batch are all deleted, across passes.
+     *
+     * The first version of this passed a limit to get_fieldset_select, which
+     * takes no limit arguments, so the batching silently did not happen. A test
+     * with a handful of rows could not tell the difference, hence a lowered
+     * batch size and a count that requires several passes.
+     *
+     * @return void
+     */
+    public function test_every_batch_is_processed(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+        set_config('executionlogretention', 30 * DAYSECS, 'local_saylorcode');
+
+        [$instanceid, $attemptid] = $this->scenario();
+        for ($i = 0; $i < 7; $i++) {
+            $this->execution($instanceid, $attemptid, (100 + $i) * DAYSECS);
+        }
+
+        $this->assertSame(7, $DB->count_records('saylorcode_executions'));
+
+        $task = new class extends purge_execution_logs {
+            /** @var int How many passes the loop made. */
+            public $passes = 0;
+
+            /**
+             * A batch small enough that the loop has to run more than once.
+             *
+             * @return int
+             */
+            protected function batch_size(): int {
+                $this->passes++;
+                return 2;
+            }
+        };
+
+        ob_start();
+        $task->execute();
+        ob_end_clean();
+
+        $this->assertSame(0, $DB->count_records('saylorcode_executions'), 'Rows beyond the first batch survived.');
+        $this->assertSame(0, $DB->count_records('saylorcode_testresults'));
+
+        // Everything being gone is not evidence of batching: a limit that is
+        // ignored deletes the lot in a single pass and looks identical here.
+        // Seven rows in batches of two is four passes.
+        $this->assertGreaterThanOrEqual(
+            4,
+            $task->passes,
+            'The whole backlog went in one pass, so the batch limit is not being applied.'
+        );
     }
 
     /**

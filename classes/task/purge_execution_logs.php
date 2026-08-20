@@ -17,6 +17,7 @@
 namespace mod_saylorcode\task;
 
 use core\task\scheduled_task;
+use local_saylorcode\local\runner\execution_request;
 
 /**
  * Delete execution records once they are older than the configured retention.
@@ -31,14 +32,18 @@ use core\task\scheduled_task;
  * run, its timings, and the sanitised diagnostic, plus the per case outcomes
  * that hang off it.
  *
+ * Submissions are exempt. The attempt limit is enforced by counting submit rows
+ * in this table, so deleting them hands a student back submissions they have
+ * already spent: an activity capped at two attempts becomes uncapped once the
+ * retention period passes. They are assessment records rather than telemetry,
+ * and they are removed with the attempt they belong to, which is where deleting
+ * them correctly belongs.
+ *
  * @package    mod_saylorcode
  * @copyright  2026 Saylor Academy
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class purge_execution_logs extends scheduled_task {
-    /** @var int How many executions to remove per run, so one pass cannot sit on the database all night. */
-    protected const BATCH = 5000;
-
     /**
      * The name shown in the scheduled task administration screen.
      *
@@ -46,6 +51,19 @@ class purge_execution_logs extends scheduled_task {
      */
     public function get_name(): string {
         return get_string('taskpurgeexecutionlogs', 'mod_saylorcode');
+    }
+
+    /**
+     * How many executions to remove per pass.
+     *
+     * A method rather than a constant so a test can lower it and actually
+     * exercise the loop. Proving the batching works by inserting five thousand
+     * rows is not a test anyone would keep.
+     *
+     * @return int
+     */
+    protected function batch_size(): int {
+        return 5000;
     }
 
     /**
@@ -69,14 +87,23 @@ class purge_execution_logs extends scheduled_task {
         $total = 0;
 
         do {
-            $ids = $DB->get_fieldset_select(
-                'saylorcode_executions',
-                'id',
-                'timecreated < ?',
-                [$cutoff],
+            // Asked per pass rather than once, so that a test can count the
+            // passes and tell real batching from a limit that is being ignored.
+            $batch = $this->batch_size();
+
+            // Deliberately get_records_sql, not get_fieldset_select: the
+            // latter takes no limit arguments, so passing them is silently
+            // ignored and the first run on a site with any history loads every
+            // expired id into one IN clause.
+            $ids = array_keys($DB->get_records_sql(
+                "SELECT id
+                   FROM {saylorcode_executions}
+                  WHERE timecreated < ?
+                    AND mode <> ?",
+                [$cutoff, execution_request::MODE_SUBMIT],
                 0,
-                self::BATCH
-            );
+                $batch
+            ));
 
             if (empty($ids)) {
                 break;
@@ -91,7 +118,7 @@ class purge_execution_logs extends scheduled_task {
             $DB->delete_records_select('saylorcode_executions', "id $insql", $params);
 
             $total += count($ids);
-        } while (count($ids) === self::BATCH);
+        } while (count($ids) === $batch);
 
         mtrace("Deleted {$total} execution records older than " . format_time($retention) . '.');
     }
