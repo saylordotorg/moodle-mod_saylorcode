@@ -138,6 +138,28 @@ jobs:
         # prune the built file. Any second warning still fails this step.
         run: moodle-plugin-ci grunt --max-lint-warnings 1
 
+      - name: Set up Node for the JavaScript tests
+        if: ${{ !cancelled() }}
+        # Explicit rather than relying on the node moodle-plugin-ci installs
+        # through nvm for grunt, which is not reliably on PATH outside its own
+        # commands. Placed after grunt so it cannot change the node that step
+        # used.
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: JavaScript unit tests
+        if: ${{ !cancelled() }}
+        # Runs against the checked out plugin rather than the copy inside
+        # Moodle, and after grunt, so the node_modules this installs is never
+        # in the tree grunt lints. moodle-plugin-ci has no step for this:
+        # Moodle ships no JavaScript test runner, so the AMD modules had no
+        # coverage of any kind until this was added.
+        working-directory: plugin
+        run: |
+          npm ci
+          npm test
+
       - name: PHPUnit tests
         if: ${{ !cancelled() }}
         run: moodle-plugin-ci phpunit --fail-on-warning
