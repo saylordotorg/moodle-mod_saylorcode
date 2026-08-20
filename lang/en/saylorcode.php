@@ -219,6 +219,7 @@ $string['saylorcode:reviewownattempts'] = 'Review your own attempts';
 $string['saylorcode:view'] = 'View a Saylor Code Studio activity';
 $string['saylorcode:viewsolutions'] = 'View reference solutions';
 $string['showsolution'] = 'Show the solution';
+$string['sitebusy'] = 'A lot of people are running code right now. Your work is saved. Wait a moment and try again.';
 $string['solutionheading'] = 'Reference solution';
 $string['solutionwarning'] = 'Looking at the solution is recorded. Try a hint first if you have not.';
 $string['stableid'] = 'Exercise stable ID';

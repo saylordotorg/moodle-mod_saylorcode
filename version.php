@@ -26,12 +26,16 @@ defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'mod_saylorcode';
 
-$plugin->version   = 2026081910;
+$plugin->version   = 2026081911;
 
 $plugin->requires  = 2024100700; // Moodle 4.5.
 $plugin->supported = [405, 405];
 $plugin->maturity  = MATURITY_ALPHA;
 $plugin->release   = '0.1.0 (Phase 1 vertical slice)';
 $plugin->dependencies = [
-    'local_saylorcode' => 2026081902,
+    // 2026081904 is where the execution gate gained get_denial() and the
+    // DENIED_* constants. Against anything older this plugin installs happily
+    // and then fatals on the first refused execution, which is precisely the
+    // moment it was supposed to show a calm message instead.
+    'local_saylorcode' => 2026081904,
 ];

@@ -88,6 +88,12 @@ class execution_service {
         $lease = $gate->acquire();
 
         if ($lease === null) {
+            // Two different refusals wearing one message would be a small lie.
+            // Being at your own limit is something the student did; the site
+            // being saturated is not, and telling them off for someone else's
+            // traffic reads as a bug in the activity.
+            $sitebusy = $gate->get_denial() === execution_gate::DENIED_SITE;
+
             return [
                 'state' => execution_state::RUNNER_UNAVAILABLE,
                 'stdout' => '',
@@ -96,8 +102,8 @@ class execution_service {
                 'tests' => [],
                 'truncated' => false,
                 'runtime' => 0,
-                'diagnostic' => 'rate_limited',
-                'message' => get_string('ratelimited', 'mod_saylorcode'),
+                'diagnostic' => $sitebusy ? 'site_busy' : 'rate_limited',
+                'message' => get_string($sitebusy ? 'sitebusy' : 'ratelimited', 'mod_saylorcode'),
                 'score' => null,
             ];
         }
