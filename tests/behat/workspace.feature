@@ -17,8 +17,9 @@ Feature: Working in a Saylor Code Studio activity
       | student1 | C1     | student        |
       | teacher1 | C1     | editingteacher |
     And the following "activities" exist:
-      | activity   | name            | course | idnumber | stableid      | startercode          | testcases                                                       |
-      | saylorcode | Double a number | C1     | scs1     | CS101-U01-E01 | public class Main {} | [{"id":"T1","name":"Prints","expected":"ok","ispublic":true}]   |
+      | activity   | name            | course | idnumber | stableid      | layout | startercode          | testcases                                                       |
+      | saylorcode | Double a number | C1     | scs1     | CS101-U01-E01 | split  | public class Main {} | [{"id":"T1","name":"Prints","expected":"ok","ispublic":true}]   |
+      | saylorcode | Tabbed exercise | C1     | scs2     | CS101-U01-E02 | tabs   | public class Main {} | [{"id":"T1","name":"Prints","expected":"ok","ispublic":true}]   |
 
   Scenario: A student opens the workspace and sees the file they are editing
     Given I am on the "Double a number" "saylorcode activity" page logged in as "student1"
@@ -63,4 +64,44 @@ Feature: Working in a Saylor Code Studio activity
   @accessibility @javascript
   Scenario: The workspace meets accessibility standards
     Given I am on the "Double a number" "saylorcode activity" page logged in as "student1"
+    Then the page should meet accessibility standards
+
+  @accessibility @javascript
+  Scenario: The workspace is accessible once the student has moved around it
+    # The tabs layout deliberately, because that is the only layout with a tab
+    # strip: the split layout shows every panel at once and has no Input button
+    # to click. Pointing this at the split activity meant the click failed and
+    # the audit below never ran at all.
+    Given I am on the "Tabbed exercise" "saylorcode activity" page logged in as "student1"
+    # Auditing only the page as first delivered checks it in the one state a
+    # student barely occupies. This moves to another tab panel first, which is
+    # a client side change to what is showing.
+    #
+    # It is not the state after a run: the results region, console output and
+    # test list are built from a runner's response, and CI has no runner. That
+    # part of the interface stays unaudited here, and saying so is better than
+    # a scenario that implies otherwise.
+    When I click on "Input" "button"
+    And I wait until the page is ready
+    Then the page should meet accessibility standards
+
+  @accessibility @javascript
+  Scenario: The activity is accessible to the teacher who has to review it
+    Given I am on the "Double a number" "saylorcode activity" page logged in as "teacher1"
+    Then the page should meet accessibility standards
+
+  @accessibility @javascript
+  Scenario: The authoring form is accessible
+    Given I log in as "teacher1"
+    When I add a "saylorcode" activity to course "Course 1" section "1"
+    Then the page should meet accessibility standards
+
+  @accessibility @javascript
+  Scenario: The workspace is accessible at a narrow width
+    Given I am on the "Double a number" "saylorcode activity" page logged in as "student1"
+    # Reflow, in the sense of WCAG 1.4.10: the layout has to survive a viewport
+    # this narrow without a second scrolling direction, and the audit has to
+    # still pass once it has.
+    When I change the viewport size to "320x800"
+    And I wait until the page is ready
     Then the page should meet accessibility standards
