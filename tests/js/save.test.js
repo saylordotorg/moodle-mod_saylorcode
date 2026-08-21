@@ -59,16 +59,25 @@ describe('workspace autosave', () => {
     it('sends the snapshot it knows about, so the server can spot a conflict', async() => {
         respondWith(() => resolved({saved: true, conflict: false, snapshotid: 7, message: 'saved'}));
 
-        workspace.code.setValue('changed');
+        // The first request carries zero, because nothing is known yet, and
+        // checking only that one proves nothing: hard coding the argument to
+        // zero would satisfy it while disabling conflict detection entirely,
+        // since has_conflict() reads zero as a first save and returns false.
+        // So a snapshot is established first, and the request after it is what
+        // gets inspected.
+        workspace.code.setValue('first version');
+        await workspace.save();
+        await settle();
+        expect(workspace.knownSnapshotId).toBe(7);
+
+        workspace.code.setValue('second version');
         await workspace.save();
         await settle();
 
         const args = lastSaveArgs();
 
         expect(args).not.toBeNull();
-        // Without this the server cannot tell a stale save from a fresh one and
-        // one tab overwrites the other in silence.
-        expect(args.knownsnapshotid).toBeDefined();
+        expect(args.knownsnapshotid).toBe(7);
         expect(args.browsersession).toBeTruthy();
     });
 
