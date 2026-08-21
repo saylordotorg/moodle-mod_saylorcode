@@ -208,6 +208,159 @@ final class custom_completion_test extends \advanced_testcase {
     }
 
     /**
+     * A near miss on uneven weights is not a pass.
+     *
+     * Found in review. The comparison allowed anything at or above 0.9999,
+     * which sounds like a rounding allowance and is not: a case of weight 9999
+     * passing while one of weight 1 fails scores 0.99990, so a required case
+     * could fail and the rule still complete. The column is number(10,5), so a
+     * real full pass is exactly 1.00000 and no allowance is needed.
+     *
+     * @return void
+     */
+    public function test_a_near_miss_on_uneven_weights_is_not_a_pass(): void {
+        $this->resetAfterTest();
+
+        [$cm, $userid] = $this->scenario(['completionpasstests' => 1], 0.9999);
+
+        $this->assertEquals(
+            COMPLETION_INCOMPLETE,
+            (new custom_completion($cm, $userid))->get_state('completionpasstests'),
+            'A score short of every case passing was accepted as passing every case.'
+        );
+    }
+
+    /**
+     * A guided lesson is judged on the lesson, not on one step.
+     *
+     * Found in review, and the more serious of the two. Every step submission
+     * writes the attempt's score, so passing the first step of ten stores a one
+     * and the best-score query read that as the whole activity. The lesson
+     * would complete with nine steps never opened.
+     *
+     * @return void
+     */
+    public function test_a_guided_lesson_is_not_complete_after_one_step(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        $course = $this->getDataGenerator()->create_course(['enablecompletion' => 1]);
+        $instance = $this->getDataGenerator()->create_module('saylorcode', [
+            'course' => $course->id,
+            'completion' => COMPLETION_TRACKING_AUTOMATIC,
+            'activitymode' => 'guided',
+            'completionpasstests' => 1,
+        ]);
+        $user = $this->getDataGenerator()->create_and_enrol($course, 'student');
+
+        // Three steps.
+        $stepids = [];
+        foreach ([1, 2, 3] as $order) {
+            $stepids[] = $DB->insert_record('saylorcode_steps', (object) [
+                'saylorcodeid' => $instance->id,
+                'sortorder' => $order,
+                'title' => "Step {$order}",
+                'steptype' => 'checkpoint',
+                'instructions' => '',
+                'instructionsformat' => FORMAT_HTML,
+                'completionrule' => 'passtests',
+                'carryforward' => 1,
+                'allowrevisit' => 1,
+                'points' => 0,
+                'timecreated' => time(),
+                'timemodified' => time(),
+            ]);
+        }
+
+        // One step passed, and the attempt score written as a submission does.
+        $attemptid = $DB->insert_record('saylorcode_attempts', (object) [
+            'saylorcodeid' => $instance->id,
+            'userid' => $user->id,
+            'attemptnumber' => 1,
+            'status' => 'submitted',
+            'score' => 1.0,
+            'hintsused' => 0,
+            'solutionviewed' => 0,
+            'timestarted' => time(),
+            'timesubmitted' => time(),
+            'timemodified' => time(),
+        ]);
+
+        $DB->insert_record('saylorcode_stepattempts', (object) [
+            'attemptid' => $attemptid,
+            'stepid' => $stepids[0],
+            'status' => 'complete',
+            'runcount' => 1,
+            'checkcount' => 1,
+            'submitcount' => 1,
+            'hintsused' => 0,
+            'solutionviewed' => 0,
+            'bestscore' => 1.0,
+            'latestscore' => 1.0,
+            'timecompleted' => time(),
+            'timemodified' => time(),
+        ]);
+
+        $cm = \cm_info::create(
+            get_coursemodule_from_instance('saylorcode', $instance->id, $course->id, false, MUST_EXIST),
+            $user->id
+        );
+
+        $this->assertEquals(
+            COMPLETION_INCOMPLETE,
+            (new custom_completion($cm, $user->id))->get_state('completionpasstests'),
+            'One step of three completed the whole lesson.'
+        );
+
+        // Finish the other two and it should complete.
+        foreach ([$stepids[1], $stepids[2]] as $stepid) {
+            $DB->insert_record('saylorcode_stepattempts', (object) [
+                'attemptid' => $attemptid,
+                'stepid' => $stepid,
+                'status' => 'complete',
+                'runcount' => 1,
+                'checkcount' => 1,
+                'submitcount' => 1,
+                'hintsused' => 0,
+                'solutionviewed' => 0,
+                'bestscore' => 1.0,
+                'latestscore' => 1.0,
+                'timecompleted' => time(),
+                'timemodified' => time(),
+            ]);
+        }
+
+        $this->assertEquals(
+            COMPLETION_COMPLETE,
+            (new custom_completion($cm, $user->id))->get_state('completionpasstests'),
+            'Every step complete should complete the lesson.'
+        );
+    }
+
+    /**
+     * A guided lesson with no steps is not complete.
+     *
+     * Dividing by the step count would either error or, worse, report every
+     * newly created guided activity as finished.
+     *
+     * @return void
+     */
+    public function test_a_guided_lesson_with_no_steps_is_not_complete(): void {
+        $this->resetAfterTest();
+
+        [$cm, $userid] = $this->scenario([
+            'activitymode' => 'guided',
+            'completionpasstests' => 1,
+        ], 1.0);
+
+        $this->assertEquals(
+            COMPLETION_INCOMPLETE,
+            (new custom_completion($cm, $userid))->get_state('completionpasstests')
+        );
+    }
+
+    /**
      * Each rule has something to show a student.
      *
      * @return void

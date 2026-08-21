@@ -50,6 +50,15 @@ class custom_completion extends activity_custom_completion {
 
         $instance = $DB->get_record('saylorcode', ['id' => $this->cm->instance], '*', MUST_EXIST);
 
+        // A guided lesson is judged on the lesson, not on one step of it. Every
+        // step submission writes the attempt's score, so the best score across
+        // attempts is the best score on whichever single step went well: pass
+        // the first of ten and it reads as one, and the whole activity would
+        // complete with nine steps never opened.
+        if (($instance->activitymode ?? '') === 'guided') {
+            return $this->guided_state($rule, $instance);
+        }
+
         // The best score across the user's attempts, as a fraction. Null means
         // they have not submitted, which is never complete: a rule about how
         // well they did cannot be satisfied by not having done it.
@@ -69,11 +78,13 @@ class custom_completion extends activity_custom_completion {
         $fraction = (float) $best;
 
         if ($rule === 'completionpasstests') {
-            // Everything that counts, not merely most of it. Weighted scoring
-            // means a fraction of one is exactly "all the cases passed", and
-            // comparing floats for equality here would be fragile, so this
-            // allows for the last decimal place rather than demanding it.
-            return $fraction >= 0.9999 ? COMPLETION_COMPLETE : COMPLETION_INCOMPLETE;
+            // Everything that counts, not most of it. The column is
+            // number(10,5), so a genuine full pass is stored as exactly
+            // 1.00000 and no tolerance is needed. A tolerance is actively
+            // wrong here: with a case of weight 9999 passing and one of weight
+            // 1 failing, the score is 0.99990, which any nearly-one comparison
+            // would accept while a required case had failed.
+            return $fraction >= 1.0 ? COMPLETION_COMPLETE : COMPLETION_INCOMPLETE;
         }
 
         // The minimum score rule, whose setting is held as a percentage.
@@ -86,6 +97,64 @@ class custom_completion extends activity_custom_completion {
         }
 
         return ($fraction * 100) >= $required ? COMPLETION_COMPLETE : COMPLETION_INCOMPLETE;
+    }
+
+    /**
+     * Judge a guided lesson on the lesson as a whole.
+     *
+     * Step progress lives in saylorcode_stepattempts, and step_manager already
+     * decides what a completed step is. This defers to it rather than inventing
+     * a second definition that could drift from the one students see on the
+     * progress bar.
+     *
+     * @param string $rule The rule being judged.
+     * @param \stdClass $instance The activity.
+     * @return int
+     */
+    protected function guided_state(string $rule, \stdClass $instance): int {
+        global $DB;
+
+        $attempts = $DB->get_fieldset_select(
+            'saylorcode_attempts',
+            'id',
+            'saylorcodeid = ? AND userid = ?',
+            [$instance->id, $this->userid]
+        );
+
+        if (empty($attempts)) {
+            return COMPLETION_INCOMPLETE;
+        }
+
+        $manager = new \mod_saylorcode\local\step_manager($instance);
+
+        // The best any single attempt reached. A student with more than one
+        // attempt should not be punished for the weaker one.
+        $bestcomplete = 0;
+        $total = 0;
+
+        foreach ($attempts as $attemptid) {
+            $progress = $manager->get_progress((int) $attemptid);
+            $total = max($total, (int) $progress['total']);
+            $bestcomplete = max($bestcomplete, (int) $progress['complete']);
+        }
+
+        // A lesson with no steps has nothing to finish. Reporting it complete
+        // would mark every guided activity done the moment it was created.
+        if ($total === 0) {
+            return COMPLETION_INCOMPLETE;
+        }
+
+        if ($rule === 'completionpasstests') {
+            return $bestcomplete >= $total ? COMPLETION_COMPLETE : COMPLETION_INCOMPLETE;
+        }
+
+        $required = (int) ($instance->completionminscore ?? 0);
+
+        if ($required <= 0) {
+            return COMPLETION_INCOMPLETE;
+        }
+
+        return (($bestcomplete / $total) * 100) >= $required ? COMPLETION_COMPLETE : COMPLETION_INCOMPLETE;
     }
 
     /**
