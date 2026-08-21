@@ -94,6 +94,13 @@ Feature: Working in a Saylor Code Studio activity
   Scenario: The authoring form is accessible
     Given I log in as "teacher1"
     When I add a "saylorcode" activity to course "Course 1" section "1"
+    # Waiting is not optional here. Reaching this form means clicking through
+    # the activity chooser rather than navigating to a URL, and the audit step
+    # polls for axe results and throws "No data" if it starts before the page
+    # has settled. Without this the scenario passed on PHP 8.1 and failed on
+    # 8.3 on the same commit, which is a flake I introduced rather than a
+    # difference between the two.
+    And I wait until the page is ready
     Then the page should meet accessibility standards
 
   @accessibility @javascript
