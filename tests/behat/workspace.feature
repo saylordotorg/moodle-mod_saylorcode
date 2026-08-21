@@ -17,8 +17,9 @@ Feature: Working in a Saylor Code Studio activity
       | student1 | C1     | student        |
       | teacher1 | C1     | editingteacher |
     And the following "activities" exist:
-      | activity   | name            | course | idnumber | stableid      | startercode          | testcases                                                       |
-      | saylorcode | Double a number | C1     | scs1     | CS101-U01-E01 | public class Main {} | [{"id":"T1","name":"Prints","expected":"ok","ispublic":true}]   |
+      | activity   | name            | course | idnumber | stableid      | layout | startercode          | testcases                                                       |
+      | saylorcode | Double a number | C1     | scs1     | CS101-U01-E01 | split  | public class Main {} | [{"id":"T1","name":"Prints","expected":"ok","ispublic":true}]   |
+      | saylorcode | Tabbed exercise | C1     | scs2     | CS101-U01-E02 | tabs   | public class Main {} | [{"id":"T1","name":"Prints","expected":"ok","ispublic":true}]   |
 
   Scenario: A student opens the workspace and sees the file they are editing
     Given I am on the "Double a number" "saylorcode activity" page logged in as "student1"
@@ -67,7 +68,11 @@ Feature: Working in a Saylor Code Studio activity
 
   @accessibility @javascript
   Scenario: The workspace is accessible once the student has moved around it
-    Given I am on the "Double a number" "saylorcode activity" page logged in as "student1"
+    # The tabs layout deliberately, because that is the only layout with a tab
+    # strip: the split layout shows every panel at once and has no Input button
+    # to click. Pointing this at the split activity meant the click failed and
+    # the audit below never ran at all.
+    Given I am on the "Tabbed exercise" "saylorcode activity" page logged in as "student1"
     # Auditing only the page as first delivered checks it in the one state a
     # student barely occupies. This moves to another tab panel first, which is
     # a client side change to what is showing.
