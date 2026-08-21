@@ -227,6 +227,46 @@ function saylorcode_update_grades(stdClass $moduleinstance, int $userid = 0, boo
 }
 
 /**
+ * Cached information about one instance, for the course page and completion.
+ *
+ * The custom completion rules have to be published here or they do not exist as
+ * far as Moodle is concerned. activity_custom_completion::is_available() reads
+ * them from the course module's cached custom data, and a rule missing from it
+ * is refused before it is ever evaluated. Declaring the rules on the form and
+ * implementing the class that judges them is not enough on its own; this is the
+ * third piece, and its absence is as silent as the other two were.
+ *
+ * @param stdClass $coursemodule The course module.
+ * @return cached_cm_info|false
+ */
+function saylorcode_get_coursemodule_info(stdClass $coursemodule) {
+    global $DB;
+
+    $fields = 'id, name, intro, introformat, completionpasstests, completionminscore';
+    $instance = $DB->get_record('saylorcode', ['id' => $coursemodule->instance], $fields);
+
+    if (!$instance) {
+        return false;
+    }
+
+    $info = new cached_cm_info();
+    $info->name = $instance->name;
+
+    if ($coursemodule->showdescription) {
+        $info->content = format_module_intro('saylorcode', $instance, $coursemodule->id, false);
+    }
+
+    // Only when completion is automatic, matching how core modules do it: a
+    // rule offered under manual completion would be judged and then ignored.
+    if ((int) $coursemodule->completion === COMPLETION_TRACKING_AUTOMATIC) {
+        $info->customdata['customcompletionrules']['completionpasstests'] = $instance->completionpasstests;
+        $info->customdata['customcompletionrules']['completionminscore'] = $instance->completionminscore;
+    }
+
+    return $info;
+}
+
+/**
  * Describe the custom completion rules this activity offers.
  *
  * @return string[]
