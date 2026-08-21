@@ -215,8 +215,16 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
 
         $exported = [];
         foreach ($results as $result) {
+            // A hidden case is never described to a student, and a privacy
+            // export is read by the student it belongs to. The outcome is
+            // theirs to have; the author's name for the case is not, so it is
+            // masked here exactly as it is in an execution response.
+            $name = empty($result->ispublic)
+                ? get_string('hiddentest', 'local_saylorcode')
+                : $result->testname;
+
             $exported[] = [
-                'test' => $result->testname,
+                'test' => $name,
                 'passed' => transform::yesno($result->passed),
                 'hidden' => transform::yesno(empty($result->ispublic)),
                 'timecreated' => transform::datetime($result->timecreated),
