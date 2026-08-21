@@ -1038,3 +1038,111 @@ button.saylorcode-guided-steplabel:hover {
     font-size: 0.8125rem;
     color: var(--text-muted, #6c757d);
 }
+
+/* ==========================================================================
+   Forced colours (Windows High Contrast and similar).
+
+   The whole interface is painted from custom properties, and in forced-colours
+   mode the operating system overrides the standard colour properties but not
+   the things built out of them: a border expressed as a translucent rgba value
+   disappears against a forced background, a gradient progress bar becomes
+   invisible, and an outline drawn in an accent colour stops being the accent.
+   The result was a code editor whose structure could not be seen at all.
+
+   The approach is to hand the surfaces back to the system palette and redraw
+   structure with system colours, rather than to opt out with
+   forced-color-adjust. Syntax highlighting does collapse to one colour here,
+   which is correct: the user asked for their own colours, and meaning in this
+   interface never rests on colour alone -- a test result carries a tick or a
+   cross and its name, and the status pill states itself in words.
+   ========================================================================== */
+
+@media (forced-colors: active) {
+    .saylorcode-shell,
+    .saylorcode-guided {
+        --sc-border: CanvasText;
+        --sc-surface: Canvas;
+        --sc-hover: Canvas;
+        --sc-accent: LinkText;
+        --sc-pass: CanvasText;
+        --sc-fail: CanvasText;
+        --sc-muted: CanvasText;
+        --sc-code-bg: Canvas;
+        --sc-code-fg: CanvasText;
+        --sc-gutter-fg: CanvasText;
+        --sc-gutter-bg: Canvas;
+        --sc-code-rule: CanvasText;
+        --sc-console-bg: Canvas;
+        --sc-console-fg: CanvasText;
+        --sc-console-meta: CanvasText;
+        --sc-err: CanvasText;
+        --sc-ok: CanvasText;
+    }
+
+    /* Structure that was carried by translucency has to be drawn again. */
+    .saylorcode-shell .saylorcode-editor,
+    .saylorcode-shell .saylorcode-cm .cm-editor,
+    .saylorcode-shell .saylorcode-console,
+    .saylorcode-shell .saylorcode-filebar,
+    .saylorcode-shell .saylorcode-console-bar,
+    .saylorcode-shell .saylorcode-btn,
+    .saylorcode-shell .saylorcode-pill {
+        border: 1px solid currentColor;
+    }
+
+    /* A focus ring is the one thing that must never be lost, so it is drawn in
+       the system highlight colour rather than the theme accent. */
+    .saylorcode-shell .saylorcode-btn:focus-visible,
+    .saylorcode-shell .saylorcode-iconbtn:focus-visible,
+    .saylorcode-shell .saylorcode-tab:focus-visible,
+    .saylorcode-shell .saylorcode-editor:focus,
+    .saylorcode-shell .saylorcode-cm .cm-editor.cm-focused {
+        outline: 3px solid Highlight;
+        outline-offset: 1px;
+    }
+
+    /* The selected tab was distinguished by a tinted background, which forced
+       colours flattens. An underline survives. */
+    .saylorcode-shell .saylorcode-tab[aria-selected="true"] {
+        border-bottom: 3px solid Highlight;
+        font-weight: 700;
+    }
+
+    /* The progress bar was a filled gradient inside a track. Both collapse to
+       the same colour, so the fill gets an explicit edge. */
+    .saylorcode-guided .saylorcode-guided-bar {
+        border: 1px solid currentColor;
+    }
+
+    .saylorcode-guided .saylorcode-guided-bar-fill {
+        background: Highlight;
+    }
+
+    /* Step state was shown by colour and weight. Keep the weight, and let the
+       existing text label carry the rest. */
+    .saylorcode-guided .saylorcode-guided-step-current {
+        outline: 2px solid Highlight;
+        outline-offset: 2px;
+    }
+
+    .saylorcode-guided .saylorcode-guided-step-locked {
+        opacity: 1;
+    }
+}
+
+/* Honour a stated preference for more contrast, which is a different request
+   from forced colours: the palette is still ours, the user just wants the
+   edges of it firmer. */
+@media (prefers-contrast: more) {
+    .saylorcode-shell,
+    .saylorcode-guided {
+        --sc-border: currentColor;
+        --sc-muted: currentColor;
+    }
+
+    .saylorcode-shell .saylorcode-btn:focus-visible,
+    .saylorcode-shell .saylorcode-iconbtn:focus-visible,
+    .saylorcode-shell .saylorcode-tab:focus-visible {
+        outline-width: 3px;
+    }
+}
