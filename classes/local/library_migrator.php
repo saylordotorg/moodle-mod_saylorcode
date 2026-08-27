@@ -176,23 +176,26 @@ class library_migrator {
     /**
      * Activities that carry a stable id, grouped by its canonical form.
      *
-     * @param int|null $courseid Restrict to one course, or null for the whole site.
-     * @return array<string, stdClass[]> Canonical stable id => activities.
+     * The grouping is always site-wide, even when a course is named. A course
+     * only restricts which references are migrated; conflict detection still has
+     * to see every activity carrying a reference, because the resolver resolves
+     * a library exercise globally. Grouping within one course would let a
+     * divergent copy in another course go unseen, and publishing the selected
+     * course's copy would then silently switch that other activity to it.
+     *
+     * @param int|null $courseid Restrict which references are returned to those
+     *                          appearing in this course, or null for all. Each
+     *                          returned group still lists its activities site-wide.
+     * @return array<string, stdClass[]> Canonical stable id => activities, site-wide.
      */
     protected function grouped_sources(?int $courseid): array {
         global $DB;
 
         $conditions = $DB->sql_like('stableid', ':pattern', false) . ' AND stableid IS NOT NULL';
-        $params = ['pattern' => '%_%'];
-
-        if ($courseid !== null) {
-            $conditions .= ' AND course = :courseid';
-            $params['courseid'] = $courseid;
-        }
-
-        $records = $DB->get_records_select('saylorcode', $conditions, $params, 'id ASC');
+        $records = $DB->get_records_select('saylorcode', $conditions, ['pattern' => '%_%'], 'id ASC');
 
         $grouped = [];
+        $incourse = [];
         foreach ($records as $record) {
             $stableid = trim((string) $record->stableid);
 
@@ -204,9 +207,20 @@ class library_migrator {
 
             $canonical = (string) stable_id::parse($stableid);
             $grouped[$canonical][] = $record;
+
+            if ($courseid !== null && (int) $record->course === $courseid) {
+                $incourse[$canonical] = true;
+            }
         }
 
-        return $grouped;
+        if ($courseid === null) {
+            return $grouped;
+        }
+
+        // Keep only references that appear in the named course, but carry each
+        // one's full site-wide activity list forward, so a divergent copy
+        // elsewhere is still seen and reported as a conflict.
+        return array_intersect_key($grouped, $incourse);
     }
 
     /**

@@ -232,4 +232,30 @@ final class library_migrator_test extends \advanced_testcase {
         $this->assertCount(1, $plan);
         $this->assertSame('CS101-U06-E01', $plan[0]['stableid']);
     }
+
+    /**
+     * A course-scoped run still sees a divergent copy in another course.
+     *
+     * The resolver resolves a library exercise globally, so migrating the
+     * selected course's copy would switch the other course's activity to it.
+     * Conflict detection must therefore look site-wide even when the migration
+     * is restricted to one course.
+     */
+    public function test_a_course_run_detects_a_conflict_in_another_course(): void {
+        $this->resetAfterTest();
+
+        $coursea = $this->getDataGenerator()->create_course();
+        $courseb = $this->getDataGenerator()->create_course();
+        $this->activity(['course' => $coursea, 'stableid' => 'CS101-U07-E01', 'startercode' => 'class A {}']);
+        $this->activity(['course' => $courseb, 'stableid' => 'CS101-U07-E01', 'startercode' => 'class B {}']);
+
+        // Migrating only course A must still refuse: course B holds a divergent
+        // copy under the same reference.
+        $report = (new library_migrator())->migrate((int) $coursea->id);
+        $entry = $this->entry($report, 'CS101-U07-E01');
+
+        $this->assertSame(library_migrator::ACTION_CONFLICT, $entry['action']);
+        $this->assertSame('skipped', $entry['outcome']);
+        $this->assertNull((new exercise_repository())->find('CS101-U07-E01'));
+    }
 }
