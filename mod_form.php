@@ -165,10 +165,16 @@ class mod_saylorcode_mod_form extends moodleform_mod {
         ];
 
         $repeatoptions = [
-            'tcname' => ['type' => PARAM_TEXT, 'helpbutton' => ['tcname', 'mod_saylorcode']],
+            // Names and feedback describe code, so they routinely contain things
+            // shaped like tags: List<String>, Map<K, V>, a < b. PARAM_TEXT strips
+            // those silently on save, turning "Returns List<String>" into
+            // "Returns List". Everything that renders these escapes them -- the
+            // templates through {{ }} and the workspace through textContent -- so
+            // raw is safe, and it matches what the library's exercise form stores.
+            'tcname' => ['type' => PARAM_RAW, 'helpbutton' => ['tcname', 'mod_saylorcode']],
             'tcstdin' => ['type' => PARAM_RAW],
             'tcexpected' => ['type' => PARAM_RAW],
-            'tcfeedback' => ['type' => PARAM_TEXT, 'helpbutton' => ['tcfeedback', 'mod_saylorcode']],
+            'tcfeedback' => ['type' => PARAM_RAW, 'helpbutton' => ['tcfeedback', 'mod_saylorcode']],
             'tcpublic' => ['type' => PARAM_BOOL, 'default' => 1, 'helpbutton' => ['tcpublic', 'mod_saylorcode']],
             'tcweight' => ['type' => PARAM_FLOAT, 'default' => 1],
         ];

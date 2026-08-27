@@ -38,6 +38,9 @@ use local_saylorcode\local\runner\provider_interface;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class exercise_validator {
+    /** @var provider_interface|null A backend injected for testing, used when none is passed. */
+    protected static ?provider_interface $testprovider = null;
+
     /** @var provider_interface The execution backend. */
     protected provider_interface $provider;
 
@@ -47,7 +50,20 @@ class exercise_validator {
      * @param provider_interface|null $provider Backend, defaulting to the configured one.
      */
     public function __construct(?provider_interface $provider = null) {
-        $this->provider = $provider ?? jobe_provider::create_from_config();
+        $this->provider = $provider ?? self::$testprovider ?? jobe_provider::create_from_config();
+    }
+
+    /**
+     * Inject a backend for code that constructs the validator itself.
+     *
+     * The web service builds its own validator, so a test driving the service
+     * has nowhere to pass a scripted provider. This lets it stage one. It is a
+     * test seam and nothing in production sets it.
+     *
+     * @param provider_interface|null $provider The backend, or null to clear it.
+     */
+    public static function set_test_provider(?provider_interface $provider): void {
+        self::$testprovider = $provider;
     }
 
     /**
