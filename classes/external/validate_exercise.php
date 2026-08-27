@@ -118,7 +118,12 @@ class validate_exercise extends external_api {
             'compileroutput' => new external_value(PARAM_RAW, 'Sanitised compiler output, when relevant'),
             'results' => new external_multiple_structure(
                 new external_single_structure([
-                    'name' => new external_value(PARAM_TEXT, 'Case name'),
+                    // Raw, not PARAM_TEXT: a case name legitimately holds
+                    // code-like text such as "Returns List<String>", which the
+                    // form stores raw and PARAM_TEXT would strip during response
+                    // cleaning. The authoring module renders it with textContent,
+                    // so this never reaches the page as markup.
+                    'name' => new external_value(PARAM_RAW, 'Case name'),
                     'passed' => new external_value(PARAM_BOOL, 'Whether the reference satisfied it'),
                     'ispublic' => new external_value(PARAM_BOOL, 'Whether students see this case'),
                     'expected' => new external_value(PARAM_RAW, 'Expected output'),
