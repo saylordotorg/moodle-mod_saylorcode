@@ -113,6 +113,7 @@ $string['layouttabs'] = 'Workbench tabs — output, input and feedback';
 $string['managesteps'] = 'Edit the steps';
 $string['maxattempts'] = 'Attempts allowed';
 $string['maxattempts_help'] = 'How many attempts a student may make. Leave at unlimited for practice activities.';
+$string['migratechangenote'] = 'Migrated from an activity into the library.';
 $string['modechallenge'] = 'Coding challenge';
 $string['modeguided'] = 'Guided lesson';
 $string['modeplayground'] = 'Playground';
