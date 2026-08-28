@@ -568,6 +568,13 @@ export class Workspace {
             getString(messagekey, 'mod_saylorcode'),
             getString(labelkey, 'mod_saylorcode'),
         ]).then(([title, question, label]) => {
+            // The argument order is worth spelling out, because core's confirm
+            // takes (title, question, saveLabel, noLabel, saveCallback) and
+            // then drops noLabel on the way to saveCancel -- its own comment
+            // says it is no longer supported. So the fourth argument is inert
+            // and the callback belongs fifth. Reading it as a four argument
+            // call puts the callback where a dead label goes, and the button
+            // then does nothing.
             return Notification.confirm(title, question, label, null, onConfirm);
         }).catch(Notification.exception);
     }
