@@ -33,7 +33,7 @@
 
 import {Workspace} from 'mod_saylorcode/workspace';
 import Ajax, {calls, respondWith, reset as resetAjax} from 'core/ajax';
-import {exceptions, reset as resetNotification} from 'core/notification';
+import {confirmations, exceptions, reset as resetNotification} from 'core/notification';
 import {resolved, rejected, deferred} from './helpers/jquery_deferred';
 import {mount, settle} from './helpers/shell';
 
@@ -157,6 +157,71 @@ describe('workspace busy lifecycle', () => {
 
         expect(exceptions.length).toBeGreaterThan(0);
         expect(workspace.busy).toBe(false);
+    });
+});
+
+describe('workspace confirmations', () => {
+    let root;
+
+    beforeEach(() => {
+        resetAjax();
+        resetNotification();
+        root = mount();
+    });
+
+    // A tester found Reset doing nothing but showing "Cannot read properties of
+    // null (reading 'hasOwnProperty')". The confirm button label was passed as
+    // null, and core's Modal.asyncSet() calls value.hasOwnProperty('then')
+    // having guarded only on `typeof value !== 'object'` -- which null passes.
+    // Core threw before opening the dialogue, so the action never ran.
+    //
+    // Nothing caught it because the confirmation path had no test at all: the
+    // only reset test drove preview mode, which returns before confirming.
+    it('gives the confirm button a real label, never null', async() => {
+        respondWith(() => resolved({files: JSON.stringify({'Main.java': 'starter'})}));
+
+        const workspace = new Workspace(root);
+        workspace.handleAction('reset');
+        await settle();
+
+        expect(confirmations.length).toBe(1);
+        expect(confirmations[0].saveLabel).toBeTruthy();
+        expect(exceptions.length).toBe(0);
+    });
+
+    it('actually resets once the student agrees', async() => {
+        respondWith(() => resolved({files: JSON.stringify({'Main.java': 'starter'})}));
+
+        const workspace = new Workspace(root);
+        workspace.handleAction('reset');
+        await settle();
+
+        // The reported symptom was the action never running at all.
+        expect(calls.some((call) => call.methodname === 'mod_saylorcode_reset_code')).toBe(true);
+    });
+
+    // Submit comes through the same helper, so the same null label took it out
+    // too -- on a graded activity that means a student cannot submit. A
+    // playground has no Submit button, which is why the tester met it on Reset.
+    it('confirms and then submits', async() => {
+        respondWith(() => resolved({
+            state: 'completed',
+            stdout: 'ok',
+            stderr: '',
+            compileroutput: '',
+            tests: [],
+            truncated: false,
+            attempts: 1,
+        }));
+
+        const workspace = new Workspace(root);
+        workspace.handleAction('submit');
+        await settle();
+
+        expect(confirmations.length).toBe(1);
+        expect(confirmations[0].saveLabel).toBeTruthy();
+        expect(calls.some((call) => call.args && call.args.mode === 'submit')).toBe(true);
+        expect(exceptions.length).toBe(0);
     });
 });
 
