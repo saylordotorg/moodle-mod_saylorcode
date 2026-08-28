@@ -1,0 +1,124 @@
+name: Bug report
+description: Something in Saylor Code Studio behaved wrongly while you were testing it.
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for testing. A couple of things make a report much faster to act on:
+
+        - **Paste the error as text, not only a screenshot.** The exact wording is
+          usually what identifies the cause. A recent report turned on the phrase
+          `Cannot read properties of null (reading 'hasOwnProperty')`, which named
+          the failing line in Moodle core within minutes.
+        - **Say which activity mode and layout you were in.** Several parts of the
+          workspace only appear in some modes, so a bug that looks general is often
+          specific to one. That detail is what showed a recent Reset fault also
+          affected Submit everywhere else.
+
+        Nothing below is compulsory except the first three. Fill in what you know.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: What went wrong
+      description: One or two sentences. What were you doing, and what happened?
+      placeholder: Clicking Reset showed an error and nothing was reset.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Enough for someone else to see it happen.
+      placeholder: |
+        1. Open the activity ...
+        2. Type something in the editor
+        3. Click Reset
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+      placeholder: The starter code comes back and a snapshot of my work is kept.
+    validations:
+      required: true
+
+  - type: textarea
+    id: errortext
+    attributes:
+      label: Exact error text
+      description: >
+        Copy and paste it rather than retyping. If a red box appeared, include its
+        title and body. Leave blank if there was no error message.
+      render: text
+
+  - type: textarea
+    id: console
+    attributes:
+      label: Browser console output
+      description: >
+        Optional but valuable for anything that looks like an interface fault.
+        Press F12, open the Console tab, reproduce the problem, and paste anything
+        in red.
+      render: text
+
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Activity mode
+      options:
+        - Not sure
+        - Playground
+        - Coding challenge
+        - Guided lesson
+        - Project
+        - Not applicable (library, catalogue, report, quiz question)
+
+  - type: dropdown
+    id: layout
+    attributes:
+      label: Layout
+      options:
+        - Not sure
+        - Split view
+        - Compact drawer
+        - Workbench tabs
+        - Not applicable
+
+  - type: dropdown
+    id: role
+    attributes:
+      label: What were you signed in as
+      description: Some controls only appear for some roles, and some only work for others.
+      options:
+        - Not sure
+        - Student
+        - Teacher or editing teacher
+        - Administrator
+        - Not signed in / guest
+
+  - type: input
+    id: where
+    attributes:
+      label: Where
+      description: The page address, or the course and activity name.
+      placeholder: https://dev.sylr.org/mod/saylorcode/view.php?id=...
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and operating system
+      placeholder: Chrome 139 on Windows 11
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: >
+        Screenshots, a recording, how often it happens, or whether it started
+        recently. Drag images straight into this box.
