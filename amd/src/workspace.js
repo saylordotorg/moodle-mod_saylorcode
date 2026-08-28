@@ -473,13 +473,13 @@ export class Workspace {
                 break;
 
             case 'submit':
-                this.confirmThen('submitconfirm', () => {
+                this.confirmThen('submitconfirm', 'submit', () => {
                     this.execute('submit').catch(Notification.exception);
                 });
                 break;
 
             case 'reset':
-                this.confirmThen('resetconfirm', () => {
+                this.confirmThen('resetconfirm', 'reset', () => {
                     this.reset().catch(Notification.exception);
                 });
                 break;
@@ -548,15 +548,34 @@ export class Workspace {
     /**
      * Ask for confirmation before a consequential action.
      *
+     * The confirm button carries a real label, and must: core passes it to
+     * Modal.asyncSet(), which reads value.hasOwnProperty('then') having guarded
+     * only on `typeof value !== 'object'`. Since typeof null is 'object', a null
+     * label throws inside core before the dialogue opens, so the student sees a
+     * TypeError and the action never runs. That took out Reset and Submit
+     * alike, because both come through here.
+     *
+     * Naming the button after the action is also plainer than the default
+     * "Save changes" on a dialogue that is not saving anything.
+     *
      * @param {string} messagekey Language string key for the question.
+     * @param {string} labelkey Language string key for the confirm button.
      * @param {Function} onConfirm Called when the student agrees.
      */
-    confirmThen(messagekey, onConfirm) {
+    confirmThen(messagekey, labelkey, onConfirm) {
         Promise.all([
             getString('pluginname', 'mod_saylorcode'),
             getString(messagekey, 'mod_saylorcode'),
-        ]).then(([title, question]) => {
-            return Notification.confirm(title, question, null, null, onConfirm);
+            getString(labelkey, 'mod_saylorcode'),
+        ]).then(([title, question, label]) => {
+            // The argument order is worth spelling out, because core's confirm
+            // takes (title, question, saveLabel, noLabel, saveCallback) and
+            // then drops noLabel on the way to saveCancel -- its own comment
+            // says it is no longer supported. So the fourth argument is inert
+            // and the callback belongs fifth. Reading it as a four argument
+            // call puts the callback where a dead label goes, and the button
+            // then does nothing.
+            return Notification.confirm(title, question, label, null, onConfirm);
         }).catch(Notification.exception);
     }
 

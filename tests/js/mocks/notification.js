@@ -27,6 +27,9 @@
 /** @type {Array} Everything passed to exception(). */
 export const exceptions = [];
 
+/** @type {Array} Every confirm() call, as {title, question, saveLabel}. */
+export const confirmations = [];
+
 /**
  * Forget what was recorded.
  *
@@ -34,6 +37,7 @@ export const exceptions = [];
  */
 export const reset = () => {
     exceptions.length = 0;
+    confirmations.length = 0;
 };
 
 export default {
@@ -56,5 +60,38 @@ export default {
      */
     alert(title, message) {
         exceptions.push(new Error(`${title}: ${message}`));
+    },
+
+    /**
+     * Record a confirmation and take the yes branch.
+     *
+     * Faithful about one thing in particular. Core hands the save label to
+     * Modal.asyncSet(), which reads value.hasOwnProperty('then') after guarding
+     * only on `typeof value !== 'object'` -- and typeof null is 'object'. So a
+     * null label throws a TypeError inside core and the dialogue never opens,
+     * which is what a tester saw when Reset did nothing but show
+     * "Cannot read properties of null". Reproducing it here means a test fails
+     * instead of a person finding it.
+     *
+     * The fourth argument is deliberately not checked: core's confirm() drops
+     * it before calling saveCancel(), so a null there is harmless.
+     *
+     * @param {string} title The dialogue title.
+     * @param {string} question The question.
+     * @param {string} saveLabel The confirm button label.
+     * @param {string} cancelLabel Ignored by core.
+     * @param {Function} onConfirm Called when the user agrees.
+     * @returns {void}
+     */
+    confirm(title, question, saveLabel, cancelLabel, onConfirm) {
+        if (saveLabel === null || typeof saveLabel === 'undefined') {
+            throw new TypeError("Cannot read properties of null (reading 'hasOwnProperty')");
+        }
+
+        confirmations.push({title, question, saveLabel});
+
+        if (typeof onConfirm === 'function') {
+            onConfirm();
+        }
     },
 };
