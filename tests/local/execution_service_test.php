@@ -76,14 +76,14 @@ final class execution_service_test extends \advanced_testcase {
     }
 
     /**
-     * A run with an empty Input tab says so, rather than reporting a crash.
+     * A run with empty standard input says so, rather than reporting a crash.
      *
      * Execution is batch, so a program that reads input it was never given
      * fails at once with a stack trace. Accurate and no use to a beginner: it
      * points at their code, which is very likely fine, and never mentions the
      * box that would fix it.
      */
-    public function test_a_run_with_no_input_names_the_input_tab(): void {
+    public function test_a_run_with_no_input_names_standard_input(): void {
         [, , $attempt, $service, $provider] = $this->build_fixture([], execution_state::RUNTIME_ERROR);
         $provider->stderr = "Exception in thread \"main\" java.util.NoSuchElementException\n"
             . "\tat java.base/java.util.Scanner.throwFor(Scanner.java:937)\n";
@@ -91,7 +91,7 @@ final class execution_service_test extends \advanced_testcase {
         $result = $service->execute($attempt, ['Main.java' => 'x'], execution_request::MODE_RUN, '');
 
         $this->assertSame(get_string('errorinputnone', 'mod_saylorcode'), $result['message']);
-        $this->assertStringContainsString('Input tab is empty', $result['message']);
+        $this->assertStringContainsString('Standard input box is empty', $result['message']);
     }
 
     /**
@@ -99,7 +99,8 @@ final class execution_service_test extends \advanced_testcase {
      */
     public function test_a_run_with_too_little_input_says_so(): void {
         [, , $attempt, $service, $provider] = $this->build_fixture([], execution_state::RUNTIME_ERROR);
-        $provider->stderr = "Exception in thread \"main\" java.util.NoSuchElementException\n";
+        $provider->stderr = "Exception in thread \"main\" java.util.NoSuchElementException\n"
+            . "\tat java.base/java.util.Scanner.throwFor(Scanner.java:937)\n";
 
         $result = $service->execute($attempt, ['Main.java' => 'x'], execution_request::MODE_RUN, "4\n");
 
