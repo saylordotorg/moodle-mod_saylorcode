@@ -76,6 +76,51 @@ final class execution_service_test extends \advanced_testcase {
     }
 
     /**
+     * A run with an empty Input tab says so, rather than reporting a crash.
+     *
+     * Execution is batch, so a program that reads input it was never given
+     * fails at once with a stack trace. Accurate and no use to a beginner: it
+     * points at their code, which is very likely fine, and never mentions the
+     * box that would fix it.
+     */
+    public function test_a_run_with_no_input_names_the_input_tab(): void {
+        [, , $attempt, $service, $provider] = $this->build_fixture([], execution_state::RUNTIME_ERROR);
+        $provider->stderr = "Exception in thread \"main\" java.util.NoSuchElementException\n"
+            . "\tat java.base/java.util.Scanner.throwFor(Scanner.java:937)\n";
+
+        $result = $service->execute($attempt, ['Main.java' => 'x'], execution_request::MODE_RUN, '');
+
+        $this->assertSame(get_string('errorinputnone', 'mod_saylorcode'), $result['message']);
+        $this->assertStringContainsString('Input tab is empty', $result['message']);
+    }
+
+    /**
+     * A run that supplied some input, but not enough, says that instead.
+     */
+    public function test_a_run_with_too_little_input_says_so(): void {
+        [, , $attempt, $service, $provider] = $this->build_fixture([], execution_state::RUNTIME_ERROR);
+        $provider->stderr = "Exception in thread \"main\" java.util.NoSuchElementException\n";
+
+        $result = $service->execute($attempt, ['Main.java' => 'x'], execution_request::MODE_RUN, "4\n");
+
+        $this->assertSame(get_string('errorinputshort', 'mod_saylorcode'), $result['message']);
+    }
+
+    /**
+     * An ordinary crash still reads as an ordinary crash.
+     *
+     * The input message is only worth having while it is specific.
+     */
+    public function test_an_ordinary_runtime_error_is_unchanged(): void {
+        [, , $attempt, $service, $provider] = $this->build_fixture([], execution_state::RUNTIME_ERROR);
+        $provider->stderr = "Exception in thread \"main\" java.lang.ArithmeticException: / by zero\n";
+
+        $result = $service->execute($attempt, ['Main.java' => 'x'], execution_request::MODE_RUN, '');
+
+        $this->assertSame(get_string('errorruntime', 'mod_saylorcode'), $result['message']);
+    }
+
+    /**
      * A correct solution passes every case and scores full marks on submit.
      */
     public function test_submit_scores_all_tests(): void {
