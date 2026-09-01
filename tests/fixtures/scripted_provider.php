@@ -41,6 +41,9 @@ class scripted_provider implements provider_interface {
     /** @var string State to report for every execution. */
     protected string $state;
 
+    /** @var string Error output to report, for testing how failures read. */
+    public string $stderr = '';
+
     /** @var execution_request[] Every request this provider was given. */
     public array $requests = [];
 
@@ -98,7 +101,7 @@ class scripted_provider implements provider_interface {
             $request->get_request_id(),
             $this->state,
             $stdout,
-            '',
+            $this->stderr,
             '',
             [],
             0,

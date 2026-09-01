@@ -118,7 +118,7 @@ class execution_service {
             $this->record_execution($attempt, $mode, $response);
 
             $payload = $response->export_for_student();
-            $payload['message'] = $this->describe_state($response->get_state());
+            $payload['message'] = $this->describe_outcome($response, $mode, $stdin);
             $payload['score'] = null;
 
             if ($mode === execution_request::MODE_SUBMIT) {
@@ -356,6 +356,40 @@ class execution_service {
         $this->record_test_results($executionid, $response);
     }
 
+
+    /**
+     * A plain language description of how the run ended.
+     *
+     * Mostly the state, but a program that asked for input it was not given is
+     * worth naming, because the state alone sends a beginner looking for a bug
+     * in code that is very likely correct. Execution is batch: input is handed
+     * over before the program starts, so a read past the end of it fails
+     * immediately rather than waiting for someone to type.
+     *
+     * Only for a plain run, where the input is the student's own and the Input
+     * tab is the thing that fixes it. On check and submit the input belongs to
+     * the author's test cases, run_tests() keeps the per case outcomes rather
+     * than any one case's error output, and a case whose input runs short shows
+     * as a failed test carrying the author's feedback -- which is the right
+     * account of it. An exercise whose cases do not feed its own program is
+     * caught before students see it, by the reference solution check that gates
+     * approval.
+     *
+     * @param execution_response $response The runner's answer.
+     * @param string $mode run, check or submit.
+     * @param string $stdin What the student supplied, for a plain run.
+     * @return string
+     */
+    protected function describe_outcome(execution_response $response, string $mode, string $stdin): string {
+        if ($mode === execution_request::MODE_RUN && $response->ran_out_of_input()) {
+            return get_string(
+                trim($stdin) === '' ? 'errorinputnone' : 'errorinputshort',
+                'mod_saylorcode'
+            );
+        }
+
+        return $this->describe_state($response->get_state());
+    }
     /**
      * A plain language description of an execution state.
      *
