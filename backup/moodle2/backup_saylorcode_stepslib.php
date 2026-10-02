@@ -47,7 +47,7 @@ class backup_saylorcode_activity_structure_step extends backup_activity_structur
         $saylorcode = new backup_nested_element('saylorcode', ['id'], [
             'name', 'intro', 'introformat', 'activitymode', 'stableid',
             'versionpolicy', 'pinnedversion', 'profileid', 'layout',
-            'entryfilename', 'startercode', 'referencesolution', 'testcases',
+            'entryfilename', 'startercode', 'previewhtml', 'referencesolution', 'testcases',
             'maxattempts', 'gradingmode', 'allowhints', 'allowsolution',
             'allowdownload', 'hints', 'grade', 'completionpasstests',
             'completionminscore', 'timecreated', 'timemodified',

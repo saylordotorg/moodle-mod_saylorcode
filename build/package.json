@@ -1,0 +1,5 @@
+{
+  "name": "mod-saylorcode-codemirror-builder",
+  "private": true,
+  "description": "Builds amd/src/codemirror-lazy.js. See build.sh."
+}

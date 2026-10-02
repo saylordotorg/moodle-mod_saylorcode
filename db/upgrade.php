@@ -149,5 +149,17 @@ function xmldb_saylorcode_upgrade($oldversion): bool {
         upgrade_mod_savepoint(true, 2026081909, 'saylorcode');
     }
 
+    if ($oldversion < 2026100200) {
+        // A CSS activity styles a page, and the student edits only the
+        // stylesheet, so the page has to come from the author.
+        $table = new xmldb_table('saylorcode');
+        $field = new xmldb_field('previewhtml', XMLDB_TYPE_TEXT, null, null, null, null, null, 'startercode');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        upgrade_mod_savepoint(true, 2026100200, 'saylorcode');
+    }
+
     return true;
 }

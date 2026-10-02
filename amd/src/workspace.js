@@ -29,6 +29,7 @@ import Ajax from 'core/ajax';
 import {get_string as getString} from 'core/str';
 import Notification from 'core/notification';
 import * as Editor from 'mod_saylorcode/editor';
+import * as Preview from 'mod_saylorcode/preview';
 
 /**
  * How long the editor must be idle before an autosave fires.
@@ -63,6 +64,8 @@ const SELECTORS = {
     ACTION: '[data-action]',
     TAB: '[data-tab]',
     PANEL: '[data-panel]',
+    PREVIEW: '[data-region="preview"]',
+    PREVIEW_PAGE: '[data-region="previewpage"]',
 };
 
 /** @type {string[]} States that mean the program or the platform failed. */
@@ -93,6 +96,12 @@ export class Workspace {
         // An author preview renders the real workspace but talks to nothing:
         // staff hold no attempt, so a save or a run would only fail.
         this.preview = root.dataset.preview === '1';
+        this.languageId = root.dataset.languageid || 'java';
+        // HTML and CSS are drawn here rather than run on the server.
+        this.browser = root.dataset.browser === '1';
+        this.frame = root.querySelector(SELECTORS.PREVIEW);
+        const page = root.querySelector(SELECTORS.PREVIEW_PAGE);
+        this.previewPage = page ? page.value : '';
 
         this.editor = root.querySelector(SELECTORS.EDITOR);
         this.stdin = root.querySelector(SELECTORS.STDIN);
@@ -114,11 +123,17 @@ export class Workspace {
         this.attempts = 0;
         this.best = null;
 
-        this.code = Editor.create(this.editor, this.editorLabel());
+        this.code = Editor.create(this.editor, this.editorLabel(), this.languageId);
         this.lastSavedValue = this.code ? this.code.getValue() : '';
 
         this.applyStoredTheme();
         this.registerListeners();
+
+        // A page is worth seeing before anything is pressed, and drawing it
+        // touches nothing on the server, so it is safe even in a preview.
+        if (this.browser) {
+            this.drawPreview();
+        }
     }
 
     /**
@@ -199,6 +214,19 @@ export class Workspace {
                 this.setSaveState('saved');
             }
         });
+
+        // Console output relayed out of the preview frame. Only this
+        // workspace's frame is listened to; anything else is ignored.
+        if (this.frame) {
+            window.addEventListener('message', (e) => {
+                if (Preview.isFromFrame(e, this.frame)) {
+                    this.appendConsole({
+                        text: e.data.text,
+                        kind: e.data.kind === 'error' || e.data.kind === 'warn' ? 'err' : '',
+                    });
+                }
+            });
+        }
 
         window.addEventListener('beforeunload', (e) => {
             if (this.dirty) {
@@ -463,6 +491,13 @@ export class Workspace {
 
         switch (action) {
             case 'run':
+                if (this.browser) {
+                    this.renderPreview().catch(Notification.exception);
+                    break;
+                }
+                this.execute(action).catch(Notification.exception);
+                break;
+
             case 'check':
                 this.execute(action).catch(Notification.exception);
                 break;
@@ -697,6 +732,41 @@ export class Workspace {
     }
 
     /**
+     * Draw the student's page in the preview frame, and keep their work.
+     *
+     * Running is the moment a student expects their work to be kept, and a
+     * browser language never reaches the server to have it kept there, so it
+     * is saved here instead.
+     *
+     * @returns {Promise} Resolves once the code is saved.
+     */
+    renderPreview() {
+        this.clearResults();
+        this.openResults();
+        this.drawPreview();
+        this.setStatus('ran');
+        this.stampRan();
+
+        return this.save();
+    }
+
+    /**
+     * Render the editor's current contents into the preview frame.
+     */
+    drawPreview() {
+        if (!this.frame || !this.code) {
+            return;
+        }
+
+        this.frame.srcdoc = Preview.buildDocument(
+            this.languageId,
+            this.code.getValue(),
+            this.previewPage,
+            window.location.origin
+        );
+    }
+
+    /**
      * Restore the starter code.
      *
      * @returns {Promise} Resolves when the editor has been restored.
@@ -724,6 +794,9 @@ export class Workspace {
 
             this.dirty = false;
             this.clearResults();
+            if (this.browser) {
+                this.drawPreview();
+            }
             this.setStatus('idle');
             this.setSaveState('saved');
             this.root.classList.remove('saylorcode-open');
@@ -816,6 +889,26 @@ export class Workspace {
             el.textContent = line.text;
             this.console.appendChild(el);
         });
+    }
+
+    /**
+     * Add one line to the console without clearing it.
+     *
+     * @param {Object} line Text and an optional kind.
+     */
+    appendConsole(line) {
+        if (!this.console) {
+            return;
+        }
+
+        const el = document.createElement('div');
+        el.className = 'saylorcode-console-line';
+        if (line.kind === 'err') {
+            el.classList.add('saylorcode-line-err');
+        }
+        // As text, never as HTML: this came from the student's page.
+        el.textContent = line.text;
+        this.console.appendChild(el);
     }
 
     /**

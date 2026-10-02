@@ -430,6 +430,19 @@
     outline: 1px solid color-mix(in srgb, var(--sc-code-fg) 35%, transparent);
 }
 
+/* --- Page preview (HTML and CSS) ---------------------------------------- */
+
+/* White whatever the editor theme, because that is the canvas a browser gives
+   a page with no background of its own, and the student is styling for it. */
+.saylorcode-shell .saylorcode-preview {
+    display: block;
+    width: 100%;
+    height: 22rem;
+    border: 0;
+    border-bottom: 1px solid var(--sc-code-rule);
+    background: #fff;
+}
+
 /* --- Console ------------------------------------------------------------ */
 
 .saylorcode-shell .saylorcode-console-bar {

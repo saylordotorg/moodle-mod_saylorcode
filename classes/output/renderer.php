@@ -221,6 +221,10 @@ class renderer extends plugin_renderer_base {
             ->get_profile($moduleinstance->profileid);
         $runtimename = $profile ? $profile->get_display_name() : $moduleinstance->profileid;
 
+        // HTML and CSS are drawn by the browser, not run, so the workspace
+        // swaps the console's job for a preview and has nothing to grade.
+        $isbrowser = $profile !== null && $profile->runs_in_browser();
+
         $hints = new \mod_saylorcode\local\hint_manager($moduleinstance);
 
         $layout = $moduleinstance->layout ?? 'split';
@@ -232,9 +236,12 @@ class renderer extends plugin_renderer_base {
             'stableid' => $moduleinstance->stableid,
             'profileid' => $moduleinstance->profileid,
             'runtimename' => $runtimename,
+            'languageid' => $profile ? $profile->get_language_id() : '',
+            'isbrowser' => $isbrowser,
+            'previewhtml' => $isbrowser ? (string) ($moduleinstance->previewhtml ?? '') : '',
             'entryfilename' => $entryfilename,
             'initialcode' => $initialcode,
-            'hastests' => self::has_tests($moduleinstance),
+            'hastests' => !$isbrowser && self::has_tests($moduleinstance),
             'layout' => $layout,
             'isdrawer' => $layout === 'drawer',
             'istabs' => $layout === 'tabs',
@@ -242,7 +249,7 @@ class renderer extends plugin_renderer_base {
             // A playground is deliberately ungraded, so it has nothing to
             // submit. Every other mode records an official attempt, which
             // drives completion and grading whether or not tests exist.
-            'cansubmit' => ($moduleinstance->activitymode ?? '') !== 'playground',
+            'cansubmit' => !$isbrowser && ($moduleinstance->activitymode ?? '') !== 'playground',
             'canattempt' => $canattempt,
             'allowhints' => $hints->has_hints(),
             // Solutions have their own capability, deliberately granted to no
