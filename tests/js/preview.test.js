@@ -23,9 +23,10 @@
 
 import {buildDocument, isFromFrame, MESSAGE_KEY} from 'mod_saylorcode/preview';
 import {Workspace} from 'mod_saylorcode/workspace';
-import {calls, reset as resetAjax} from 'core/ajax';
+import {calls, respondWith, reset as resetAjax} from 'core/ajax';
 import {reset as resetNotification} from 'core/notification';
 import {mount, settle} from './helpers/shell';
+import {deferred} from './helpers/jquery_deferred';
 
 const ORIGIN = 'https://moodle.example';
 
@@ -60,6 +61,18 @@ describe('preview document', () => {
 
         expect(built).toContain('<body><p>Fragment</p></body>');
         expect(built).toContain('<style>p { margin: 0; }</style>');
+    });
+
+    it('finds the real head when the text </head> appears in a script', () => {
+        const page = '<html><head><script>var s = "</head>";</script></head><body><p>x</p></body></html>';
+        const built = buildDocument('css', 'p { color: red; }', page, ORIGIN);
+        const doc = new DOMParser().parseFromString(built, 'text/html');
+
+        // The stylesheet is a real element in the head, and the script string
+        // is left exactly as the author wrote it.
+        expect(doc.head.querySelector('style').textContent).toBe('p { color: red; }');
+        const scripts = Array.from(doc.head.querySelectorAll('script'), (script) => script.textContent);
+        expect(scripts).toContain('var s = "</head>";');
     });
 
     it('cannot be broken out of by a closing style tag in the CSS', () => {
@@ -107,6 +120,26 @@ describe('workspace with a browser language', () => {
         const methods = calls.map((call) => call.methodname);
         expect(methods).not.toContain('mod_saylorcode_run_code');
         expect(methods).toContain('mod_saylorcode_save_code');
+        expect(workspace.busy).toBe(false);
+    });
+
+    it('stays busy until the save settles, so a second run cannot overtake it', async() => {
+        const pending = deferred();
+        respondWith(() => pending.promise);
+        const root = mount({browser: true, languageid: 'html', starter: '<p>one</p>'});
+        const workspace = new Workspace(root);
+
+        workspace.code.setValue('<p>two</p>');
+        workspace.handleAction('run');
+        workspace.code.setValue('<p>three</p>');
+        workspace.handleAction('run');
+
+        const saves = () => calls.filter((call) => call.methodname === 'mod_saylorcode_save_code');
+        expect(workspace.busy).toBe(true);
+        expect(saves()).toHaveLength(1);
+
+        pending.resolve({snapshotid: 1});
+        await settle();
         expect(workspace.busy).toBe(false);
     });
 

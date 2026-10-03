@@ -533,6 +533,12 @@ class mod_saylorcode_mod_form extends moodleform_mod {
                 $errors['activitymode'] = get_string('browserprofileplayground', 'mod_saylorcode', $profile->get_display_name());
             }
 
+            // Nor can it be graded by hand: it has no Submit, so a grade item
+            // would sit in the gradebook with nothing ever able to fill it.
+            if ($profile->runs_in_browser() && ($data['gradingmode'] ?? '') !== 'none') {
+                $errors['gradingmode'] = get_string('browserprofilegrading', 'mod_saylorcode', $profile->get_display_name());
+            }
+
             // Main.java is the form's default, so an author who picks another
             // language and leaves it would otherwise ship a JavaScript activity
             // whose file says Java.

@@ -738,16 +738,32 @@ export class Workspace {
      * browser language never reaches the server to have it kept there, so it
      * is saved here instead.
      *
+     * Busy until the save settles, as a server run is. Two quick runs with an
+     * edit between them would otherwise send two saves from the same browser
+     * session, which the server accepts in whatever order they arrive, so the
+     * older code could become the saved copy.
+     *
      * @returns {Promise} Resolves once the code is saved.
      */
     renderPreview() {
-        this.clearResults();
-        this.openResults();
-        this.drawPreview();
-        this.setStatus('ran');
-        this.stampRan();
+        this.setBusy(true);
 
-        return this.save();
+        try {
+            this.clearResults();
+            this.openResults();
+            this.drawPreview();
+            this.setStatus('ran');
+            this.stampRan();
+        } catch (error) {
+            this.setBusy(false);
+            return Promise.reject(error);
+        }
+
+        // Adopted into a native promise, because save() hands back the jQuery
+        // promise Ajax.call() returns, and that has no finally.
+        return Promise.resolve(this.save()).finally(() => {
+            this.setBusy(false);
+        });
     }
 
     /**

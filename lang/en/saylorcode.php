@@ -42,6 +42,7 @@ $string['analyticssolutionrate'] = 'Saw the solution';
 $string['attemptsubmitted'] = 'Your attempt has been submitted.';
 $string['attemptsummary'] = 'Attempt {$a->attempt} · best {$a->best}/{$a->total}';
 $string['backtoactivity'] = 'Back to the activity';
+$string['browserprofilegrading'] = '{$a} is drawn in the browser and has no Submit, so nothing could ever fill a grade. Set Grading to Not graded.';
 $string['browserprofileplayground'] = '{$a} is drawn in the browser rather than run, so it has no output for test cases to check. Use it in a playground.';
 $string['catalogue'] = 'Exercise catalogue';
 $string['catalogueallcourses'] = 'All courses';

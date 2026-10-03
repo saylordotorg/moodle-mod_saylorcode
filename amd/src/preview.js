@@ -90,24 +90,30 @@ const prepend = (page, markup) => {
  * The stylesheet goes last in the head, after anything the author's page
  * links, so the student's rules are the ones that win a tie.
  *
+ * The page is parsed rather than searched. A regular expression for </head>
+ * also matches that text inside a script string or a comment, which put the
+ * stylesheet somewhere it never applied. The parser finds the real head, and
+ * makes one for a fragment that has none. It does not run the page's scripts.
+ *
+ * The result is always in standards mode, which is what a stylesheet should be
+ * written for.
+ *
  * @param {string} stylesheet The student's CSS.
  * @param {string} page The author's HTML.
  * @returns {string}
  */
 const styled = (stylesheet, page) => {
-    // A literal </style> in the CSS would close the element early and let the
-    // rest be parsed as markup. Escaping the slash is a valid CSS escape, so
-    // the rule still means what the student wrote.
-    const style = '<style>' + stylesheet.replace(/<\/(style)/gi, '<\\/$1') + '</style>';
+    const doc = new DOMParser().parseFromString(page, 'text/html');
+    const style = doc.createElement('style');
 
-    if (/<\/head>/i.test(page)) {
-        return page.replace(/<\/head>/i, style + '</head>');
-    }
-    if (/<html[^>]*>/i.test(page)) {
-        return page.replace(/<html[^>]*>/i, (tag) => tag + '<head>' + style + '</head>');
-    }
-    return '<!DOCTYPE html><html><head><meta charset="utf-8">' + style + '</head><body>'
-        + page + '</body></html>';
+    // A style element serialises its text raw, so a literal </style> in the
+    // CSS would close it early and let the rest be parsed as markup in the
+    // frame. Escaping the slash is a valid CSS escape, so the rule still means
+    // what the student wrote.
+    style.textContent = stylesheet.replace(/<\/(style)/gi, '<\\/$1');
+    doc.head.appendChild(style);
+
+    return '<!DOCTYPE html>' + doc.documentElement.outerHTML;
 };
 
 /**
