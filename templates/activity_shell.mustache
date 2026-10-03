@@ -55,6 +55,9 @@
     * stableid string The referenced exercise stable id, may be empty.
     * profileid string The runtime profile id.
     * runtimename string Student facing language name.
+    * languageid string The profile's language, which picks the editor grammar.
+    * isbrowser bool Whether the language is rendered in the browser rather than run.
+    * previewhtml string The author's page a CSS activity is applied to, may be empty.
     * entryfilename string The file the student edits.
     * initialcode string The student's current code, rendered server side.
     * hastests bool Whether the activity defines any test cases.
@@ -80,6 +83,9 @@
         "stableid": "CS101-U05-E03",
         "profileid": "java17-console",
         "runtimename": "Java 17",
+        "languageid": "java",
+        "isbrowser": false,
+        "previewhtml": "",
         "entryfilename": "Main.java",
         "initialcode": "public class Main {}",
         "hastests": true,
@@ -108,6 +114,8 @@
      data-mode="{{activitymode}}"
      data-entryfilename="{{entryfilename}}"
      data-profileid="{{profileid}}"
+     data-languageid="{{languageid}}"
+     data-browser="{{#isbrowser}}1{{/isbrowser}}"
      data-preview="{{#preview}}1{{/preview}}">
 
     {{! Header: which file, which language, and how it is going. }}
@@ -184,11 +192,13 @@
                         aria-controls="saylorcode-panel-output-{{cmid}}" aria-selected="true">
                     {{#str}}taboutput, mod_saylorcode{{/str}}
                 </button>
+                {{^isbrowser}}
                 <button type="button" class="saylorcode-tab" role="tab" data-tab="input"
                         id="saylorcode-tab-input-{{cmid}}"
                         aria-controls="saylorcode-panel-input-{{cmid}}" aria-selected="false" tabindex="-1">
                     {{#str}}tabinput, mod_saylorcode{{/str}}
                 </button>
+                {{/isbrowser}}
                 {{#hastests}}
                 <button type="button" class="saylorcode-tab" role="tab" data-tab="feedback"
                         id="saylorcode-tab-feedback-{{cmid}}"
@@ -205,6 +215,17 @@
             <div class="saylorcode-panel saylorcode-panel-output" data-panel="output"
                  {{#istabs}}role="tabpanel" id="saylorcode-panel-output-{{cmid}}"
                  aria-labelledby="saylorcode-tab-output-{{cmid}}"{{/istabs}}>
+                {{#isbrowser}}
+                {{! The student's page. allow-scripts without allow-same-origin
+                    gives it an opaque origin, so its scripts run but cannot
+                    reach the Moodle session, cookies or web services. }}
+                <iframe class="saylorcode-preview" data-region="preview"
+                        sandbox="allow-scripts allow-modals"
+                        referrerpolicy="no-referrer"
+                        title="{{#str}}previewframe, mod_saylorcode{{/str}}"></iframe>
+                {{! RCDATA: the browser decodes the escaped page back to text. }}
+                <textarea hidden data-region="previewpage">{{previewhtml}}</textarea>
+                {{/isbrowser}}
                 <div class="saylorcode-console-bar">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                          stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -237,6 +258,7 @@
                 <p class="saylorcode-verdict" data-region="verdict" hidden></p>
             </div>
 
+            {{^isbrowser}}
             <div class="saylorcode-panel saylorcode-panel-input" data-panel="input"
                  {{#istabs}}role="tabpanel" id="saylorcode-panel-input-{{cmid}}"
                  aria-labelledby="saylorcode-tab-input-{{cmid}}" hidden{{/istabs}}>
@@ -252,6 +274,7 @@
                           data-gramm="false"
                           placeholder="{{#str}}stdinplaceholder, mod_saylorcode{{/str}}"></textarea>
             </div>
+            {{/isbrowser}}
 
             {{#istabs}}
             {{#hastests}}

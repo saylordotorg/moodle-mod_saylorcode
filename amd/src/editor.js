@@ -28,8 +28,8 @@
  *
  * CodeMirror is vendored with this plugin rather than borrowed from core. The
  * copy core ships for the TinyMCE HTML plugin exports only HTML, JavaScript and
- * XML languages, and none of the extension API, so no Java grammar can be added
- * to it. Borrowing the TypeScript grammar instead was rejected: TypeScript
+ * XML languages, and none of the extension API, so no Java, R or CSS grammar
+ * can be added to it. Borrowing the TypeScript grammar instead was rejected: TypeScript
  * writes parameter types after a colon, so every "main(String[] args)" in the
  * course would render as a syntax error on line one.
  *
@@ -42,8 +42,24 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import {EditorState, EditorView, basicSetup, java, indentUnit,
+import {EditorState, EditorView, basicSetup, css, html, java, javascript, r, indentUnit,
     HighlightStyle, syntaxHighlighting, tags} from 'mod_saylorcode/codemirror-lazy';
+
+/**
+ * Grammar and indentation for each provider language id.
+ *
+ * Java is indented four spaces, matching the code the students read; the
+ * others follow their own communities, which write two.
+ *
+ * @type {Object}
+ */
+const LANGUAGES = {
+    java: {grammar: java, indent: '    '},
+    nodejs: {grammar: javascript, indent: '  '},
+    r: {grammar: r, indent: '  '},
+    html: {grammar: html, indent: '  '},
+    css: {grammar: css, indent: '  '},
+};
 
 // Token colours as CSS custom properties rather than literals, so they
 // follow the editor's own light and dark surfaces. CodeMirror's default
@@ -92,9 +108,14 @@ const plainEditor = (textarea) => ({
  *
  * @param {HTMLTextAreaElement} textarea The textarea to enhance.
  * @param {string} ariaLabel Accessible name for the editing surface.
+ * @param {string} languageid The profile's provider language id.
  * @returns {Object} The editor interface.
  */
-const richEditor = (textarea, ariaLabel) => {
+const richEditor = (textarea, ariaLabel, languageid) => {
+    // An unknown language edits as Java rather than as nothing, which is what
+    // every activity written before the others existed expects.
+    const language = LANGUAGES[languageid] || LANGUAGES.java;
+
     const host = document.createElement('div');
     host.className = 'saylorcode-cm';
     textarea.parentNode.insertBefore(host, textarea);
@@ -119,13 +140,9 @@ const richEditor = (textarea, ariaLabel) => {
                 // gutter, bracket matching, undo history and the keymap.
                 basicSetup,
 
-                // Java, which is the whole reason this bundle is vendored
-                // rather than borrowed from core.
-                java(),
+                language.grammar(),
                 syntaxHighlighting(highlighting),
-
-                // Four spaces, which is what the Java the students read uses.
-                indentUnit.of('    '),
+                indentUnit.of(language.indent),
                 EditorView.updateListener.of((update) => {
                     if (!update.docChanged) {
                         return;
@@ -168,15 +185,16 @@ const richEditor = (textarea, ariaLabel) => {
  *
  * @param {HTMLTextAreaElement} textarea The textarea to enhance.
  * @param {string} ariaLabel Accessible name for the editing surface.
+ * @param {string} [languageid] The profile's provider language id, java when omitted.
  * @returns {Object} The editor interface.
  */
-export const create = (textarea, ariaLabel) => {
+export const create = (textarea, ariaLabel, languageid = 'java') => {
     if (!textarea) {
         return null;
     }
 
     try {
-        return richEditor(textarea, ariaLabel);
+        return richEditor(textarea, ariaLabel, languageid);
     } catch (e) {
         // A workspace that edits plainly is far better than one that does not
         // load, so any failure to construct the rich editor degrades silently.

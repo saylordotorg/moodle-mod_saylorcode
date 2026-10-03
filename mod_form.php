@@ -107,6 +107,19 @@ class mod_saylorcode_mod_form extends moodleform_mod {
         $mform->addHelpButton('entryfilename', 'entryfilename', 'mod_saylorcode');
         $mform->setDefault('entryfilename', 'Main.java');
 
+        // The page a CSS activity's stylesheet is applied to. A stylesheet on
+        // its own draws nothing, and the student edits only the one file, so
+        // the author supplies the markup it styles.
+        $mform->addElement(
+            'textarea',
+            'previewhtml',
+            get_string('previewhtml', 'mod_saylorcode'),
+            ['rows' => 10, 'cols' => 80, 'spellcheck' => 'false', 'class' => 'saylorcode-codearea']
+        );
+        $mform->setType('previewhtml', PARAM_RAW);
+        $mform->addHelpButton('previewhtml', 'previewhtml', 'mod_saylorcode');
+        $mform->hideIf('previewhtml', 'profileid', 'neq', profile_manager::PROFILE_CSS);
+
         // Starter code and test cases live on the activity until the central
         // library can supply them. Keeping them here means CS101 is not blocked
         // on the library landing.
@@ -508,6 +521,35 @@ class mod_saylorcode_mod_form extends moodleform_mod {
                 && (int) ($data['pinnedversion'] ?? 0) < 1
         ) {
             $errors['pinnedversion'] = get_string('pinnedversionrequired', 'mod_saylorcode');
+        }
+
+        $profiles = (new profile_manager())->get_all_profiles();
+        $profile = $profiles[(string) ($data['profileid'] ?? '')] ?? null;
+        if ($profile !== null) {
+            // A page rendered in the browser has no output for a test case to
+            // compare, so it cannot be graded, and only a playground is
+            // honest about that.
+            if ($profile->runs_in_browser() && ($data['activitymode'] ?? '') !== 'playground') {
+                $errors['activitymode'] = get_string('browserprofileplayground', 'mod_saylorcode', $profile->get_display_name());
+            }
+
+            // Nor can it be graded by hand: it has no Submit, so a grade item
+            // would sit in the gradebook with nothing ever able to fill it.
+            if ($profile->runs_in_browser() && ($data['gradingmode'] ?? '') !== 'none') {
+                $errors['gradingmode'] = get_string('browserprofilegrading', 'mod_saylorcode', $profile->get_display_name());
+            }
+
+            // Main.java is the form's default, so an author who picks another
+            // language and leaves it would otherwise ship a JavaScript activity
+            // whose file says Java.
+            $expected = pathinfo($profile->get_entry_filename(), PATHINFO_EXTENSION);
+            $given = pathinfo(trim((string) ($data['entryfilename'] ?? '')), PATHINFO_EXTENSION);
+            if (strcasecmp($expected, $given) !== 0) {
+                $errors['entryfilename'] = get_string('entryfilenameextension', 'mod_saylorcode', [
+                    'extension' => '.' . $expected,
+                    'example' => $profile->get_entry_filename(),
+                ]);
+            }
         }
 
         $minscore = (int) ($data['completionminscore'] ?? 0);

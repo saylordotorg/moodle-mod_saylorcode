@@ -29,21 +29,32 @@
 /**
  * Put a workspace shell in the document and return its root.
  *
- * @param {Object} options cmid, layout, preview, starter.
+ * @param {Object} options cmid, layout, preview, starter, languageid, browser, previewpage.
  * @returns {HTMLElement} The shell element.
  */
 export const mount = (options = {}) => {
     const cmid = options.cmid ?? 42;
     const preview = options.preview ? '1' : '0';
     const starter = options.starter ?? 'public class Main {}';
+    const languageid = options.languageid ?? 'java';
+    const browser = options.browser ? '1' : '';
+    // The page lives in a textarea in the template too, for the same reason:
+    // its contents are text, whatever markup they hold.
+    const frame = options.browser
+        ? `<iframe data-region="preview" sandbox="allow-scripts allow-modals"></iframe>
+            <textarea hidden data-region="previewpage"></textarea>`
+        : '';
 
     document.body.innerHTML = `
         <div data-region="saylorcode-shell"
              data-cmid="${cmid}"
              data-layout="${options.layout ?? 'split'}"
              data-entryfilename="Main.java"
-             data-preview="${preview}">
+             data-preview="${preview}"
+             data-languageid="${languageid}"
+             data-browser="${browser}">
             <div data-region="editor" data-starter="${starter}"></div>
+            ${frame}
             <textarea data-region="stdin"></textarea>
             <span data-region="status"></span>
             <span data-region="save"></span>
@@ -65,6 +76,11 @@ export const mount = (options = {}) => {
             <button type="button" data-action="theme">Theme</button>
         </div>
     `;
+
+    const page = document.querySelector('[data-region="previewpage"]');
+    if (page) {
+        page.value = options.previewpage ?? '';
+    }
 
     return document.querySelector('[data-region="saylorcode-shell"]');
 };
