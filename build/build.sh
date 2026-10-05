@@ -19,13 +19,17 @@ npm install --no-save --no-package-lock \
     @codemirror/lang-javascript \
     @codemirror/lang-html \
     @codemirror/lang-css \
+    @codemirror/lang-python \
+    @codemirror/lang-cpp \
+    @codemirror/lang-rust \
     @lezer/highlight \
     rollup \
     @rollup/plugin-node-resolve
 
 npx rollup ./codemirror.mjs -f esm -o ../amd/src/codemirror-lazy.js -p @rollup/plugin-node-resolve
 
-for package in codemirror @codemirror/legacy-modes @codemirror/lang-javascript @codemirror/lang-html @codemirror/lang-css; do
+for package in codemirror @codemirror/legacy-modes @codemirror/lang-javascript @codemirror/lang-html @codemirror/lang-css \
+    @codemirror/lang-python @codemirror/lang-cpp @codemirror/lang-rust; do
     echo "$package $(node -p "require('./node_modules/$package/package.json').version")"
 done
 

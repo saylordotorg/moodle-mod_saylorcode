@@ -28,8 +28,8 @@
  *
  * CodeMirror is vendored with this plugin rather than borrowed from core. The
  * copy core ships for the TinyMCE HTML plugin exports only HTML, JavaScript and
- * XML languages, and none of the extension API, so no Java, R or CSS grammar
- * can be added to it. Borrowing the TypeScript grammar instead was rejected: TypeScript
+ * XML languages, and none of the extension API, so no Java, Python, C++, Rust,
+ * R or CSS grammar can be added to it. Borrowing the TypeScript grammar instead was rejected: TypeScript
  * writes parameter types after a colon, so every "main(String[] args)" in the
  * course would render as a syntax error on line one.
  *
@@ -42,19 +42,22 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import {EditorState, EditorView, basicSetup, css, html, java, javascript, r, indentUnit,
-    HighlightStyle, syntaxHighlighting, tags} from 'mod_saylorcode/codemirror-lazy';
+import {EditorState, EditorView, basicSetup, cpp, css, html, java, javascript, python, r, rust,
+    indentUnit, HighlightStyle, syntaxHighlighting, tags} from 'mod_saylorcode/codemirror-lazy';
 
 /**
  * Grammar and indentation for each provider language id.
  *
- * Java is indented four spaces, matching the code the students read; the
- * others follow their own communities, which write two.
+ * Each follows its own community: four spaces for Java, Python (PEP 8), C++
+ * and Rust (rustfmt), two for the web languages and R.
  *
  * @type {Object}
  */
 const LANGUAGES = {
     java: {grammar: java, indent: '    '},
+    python3: {grammar: python, indent: '    '},
+    cpp: {grammar: cpp, indent: '    '},
+    rust: {grammar: rust, indent: '    '},
     nodejs: {grammar: javascript, indent: '  '},
     r: {grammar: r, indent: '  '},
     html: {grammar: html, indent: '  '},
