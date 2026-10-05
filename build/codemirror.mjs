@@ -31,6 +31,9 @@ import {r as rMode} from "@codemirror/legacy-modes/mode/r";
 import {javascript} from "@codemirror/lang-javascript";
 import {html} from "@codemirror/lang-html";
 import {css} from "@codemirror/lang-css";
+import {python} from "@codemirror/lang-python";
+import {cpp} from "@codemirror/lang-cpp";
+import {rust} from "@codemirror/lang-rust";
 
 const java = () => StreamLanguage.define(javaMode);
 const r = () => StreamLanguage.define(rMode);
@@ -40,6 +43,7 @@ export {
     EditorView,
     HighlightStyle,
     basicSetup,
+    cpp,
     css,
     html,
     indentUnit,
@@ -47,7 +51,9 @@ export {
     java,
     javascript,
     keymap,
+    python,
     r,
+    rust,
     syntaxHighlighting,
     tags,
 };

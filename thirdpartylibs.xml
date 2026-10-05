@@ -5,9 +5,10 @@
         <name>CodeMirror 6</name>
         <description>The code editor behind the workspace, bundled with grammars for every
             language it offers: Java and R from @codemirror/legacy-modes 6.5.4, and
-            @codemirror/lang-javascript 6.2.5, lang-html 6.4.12 and lang-css 6.3.1. Moodle core ships
-            CodeMirror for the TinyMCE HTML plugin, but that module exports only HTML, JavaScript and
-            XML languages and none of the extension API, so a Java or R editor cannot be built on it.
+            @codemirror/lang-javascript 6.2.5, lang-html 6.4.12, lang-css 6.3.1, lang-python 6.2.1,
+            lang-cpp 6.0.3 and lang-rust 6.0.2. Moodle core ships CodeMirror for the TinyMCE HTML
+            plugin, but that module exports only HTML, JavaScript and XML languages and none of the
+            extension API, so a Java, Python, C++, Rust or R editor cannot be built on it.
             Rebuilt with build/build.sh.</description>
         <version>6.0.2</version>
         <licenseversion></licenseversion>
