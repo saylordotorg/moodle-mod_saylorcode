@@ -44,6 +44,9 @@ class scripted_provider implements provider_interface {
     /** @var string Error output to report, for testing how failures read. */
     public string $stderr = '';
 
+    /** @var string[] Plots every response carries, base64 PNG. */
+    public array $plots = [];
+
     /** @var execution_request[] Every request this provider was given. */
     public array $requests = [];
 
@@ -106,7 +109,10 @@ class scripted_provider implements provider_interface {
             [],
             0,
             0.0,
-            0.01
+            0.01,
+            false,
+            '',
+            $this->plots
         );
     }
 

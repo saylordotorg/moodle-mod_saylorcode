@@ -192,6 +192,24 @@ final class execution_service_test extends \advanced_testcase {
     }
 
     /**
+     * A run hands the student the plots the program drew; a check does not.
+     */
+    public function test_a_run_returns_plots_and_a_check_does_not(): void {
+        $this->resetAfterTest();
+        $png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+        [, , $attempt, $service, $provider] = $this->build_fixture(['' => "done\n"]);
+        $provider->plots = [$png];
+
+        $run = $service->execute($attempt, ['Main.java' => 'x'], execution_request::MODE_RUN, '');
+        $this->assertSame([$png], $run['plots']);
+
+        // A check builds its own response from the test results, so nothing
+        // the program drew while being tested reaches the student.
+        $check = $service->execute($attempt, ['Main.java' => 'x'], execution_request::MODE_CHECK);
+        $this->assertSame([], $check['plots']);
+    }
+
+    /**
      * A run grades nothing, whatever the code does.
      */
     public function test_run_does_not_grade(): void {

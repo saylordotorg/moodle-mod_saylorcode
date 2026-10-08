@@ -103,6 +103,7 @@ class execution_service {
                 'truncated' => false,
                 'runtime' => 0,
                 'diagnostic' => $sitebusy ? 'site_busy' : 'rate_limited',
+                'plots' => [],
                 'message' => get_string($sitebusy ? 'sitebusy' : 'ratelimited', 'mod_saylorcode'),
                 'score' => null,
             ];
@@ -119,6 +120,13 @@ class execution_service {
 
             $payload = $response->export_for_student();
             $payload['message'] = $this->describe_outcome($response, $mode, $stdin);
+
+            // Plots belong to a plain run. A check or submission is judged on
+            // output, and one with no cases falls back to a run, which would
+            // otherwise bring its plots along.
+            if ($mode !== execution_request::MODE_RUN) {
+                $payload['plots'] = [];
+            }
             $payload['score'] = null;
 
             if ($mode === execution_request::MODE_SUBMIT) {

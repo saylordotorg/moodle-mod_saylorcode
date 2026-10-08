@@ -137,6 +137,7 @@ $string['noverdict'] = 'Run a Check or Submit to see how your output compares.';
 $string['pinnedversion'] = 'Version to pin to';
 $string['pinnedversion_help'] = 'Which published version of the exercise this activity should stay on. Only used when the version policy is set to pin. A graded activity should pin, so that the exercise a student was graded against does not change under them.';
 $string['pinnedversionrequired'] = 'Pinning needs a version number. Without one the activity falls back to its own content and nobody is told.';
+$string['plotalt'] = 'Plot {$a->number} of {$a->total} drawn by your program';
 $string['pluginadministration'] = 'Saylor Code Studio administration';
 $string['pluginname'] = 'Saylor Code Studio';
 $string['preview'] = 'Preview as a student';

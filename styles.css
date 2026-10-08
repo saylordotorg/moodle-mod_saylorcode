@@ -443,6 +443,36 @@
     background: #fff;
 }
 
+/* --- Plots (R) ---------------------------------------------------------- */
+
+/* Drawn on white whatever the editor theme: R draws on a white canvas, and a
+   plot's own axes and labels are dark. */
+.saylorcode-shell .saylorcode-plots {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    padding: 0.75rem 0.9rem;
+    border-top: 1px solid var(--sc-code-rule);
+    background: var(--sc-console-bg);
+}
+
+/* A flex item will not shrink below its content by default, so without these
+   a 640px plot in the narrow side of the split layout would be clipped rather
+   than scaled down to the panel. */
+.saylorcode-shell .saylorcode-plot {
+    margin: 0;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.saylorcode-shell .saylorcode-plot img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    background: #fff;
+    border-radius: 4px;
+}
+
 /* --- Console ------------------------------------------------------------ */
 
 .saylorcode-shell .saylorcode-console-bar {

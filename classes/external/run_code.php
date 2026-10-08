@@ -163,6 +163,9 @@ class run_code extends external_api {
             'truncated' => $result['truncated'],
             'runtime' => $result['runtime'],
             'score' => $result['score'],
+            // Only a plain run draws plots for the student; a check or a
+            // submission is about the output the tests compare.
+            'plots' => $result['plots'] ?? [],
             'tests' => array_map(static function (array $test): array {
                 return [
                     'name' => $test['name'],
@@ -235,6 +238,12 @@ class run_code extends external_api {
             'truncated' => new external_value(PARAM_BOOL, 'Whether output was shortened'),
             'runtime' => new external_value(PARAM_FLOAT, 'Seconds spent executing'),
             'score' => new external_value(PARAM_FLOAT, 'Percentage scored, for a submission', VALUE_OPTIONAL),
+            'plots' => new external_multiple_structure(
+                new external_value(PARAM_RAW, 'One plot the program drew, as base64 PNG, checked on the server'),
+                'Plots the program drew, in order',
+                VALUE_DEFAULT,
+                []
+            ),
             'tests' => new external_multiple_structure(
                 new external_single_structure([
                     'name' => new external_value(PARAM_TEXT, 'Test name, or a placeholder for a hidden test'),

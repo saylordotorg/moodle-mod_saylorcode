@@ -58,6 +58,7 @@ const SELECTORS = {
     CONSOLE: '[data-region="console"]',
     TESTS: '[data-region="tests"]',
     VERDICT: '[data-region="verdict"]',
+    PLOTS: '[data-region="plots"]',
     VERDICT_SURFACE: '[data-region="verdict-surface"]',
     ATTEMPTS: '[data-region="attempts"]',
     ATTEMPTS_INLINE: '[data-region="attempts-inline"]',
@@ -110,6 +111,7 @@ export class Workspace {
         this.console = root.querySelector(SELECTORS.CONSOLE);
         this.tests = root.querySelector(SELECTORS.TESTS);
         this.verdict = root.querySelector(SELECTORS.VERDICT);
+        this.plots = root.querySelector(SELECTORS.PLOTS);
 
         // Identifies this tab, so a save from another tab can be told apart
         // from this one catching up with itself.
@@ -861,6 +863,7 @@ export class Workspace {
         }
 
         this.writeConsole(lines);
+        this.renderPlots(result.plots || []);
         this.renderTests(result.tests || []);
         this.stampRan();
 
@@ -1048,9 +1051,49 @@ export class Workspace {
         if (this.tests) {
             this.tests.textContent = '';
         }
+        if (this.plots) {
+            this.plots.textContent = '';
+            this.plots.hidden = true;
+        }
         if (this.verdict) {
             this.verdict.hidden = true;
         }
+    }
+
+    /**
+     * Show the plots the program drew, below its output.
+     *
+     * The server sends only images it has decoded and checked as PNG, but the
+     * shape is checked again here: the value becomes an image source, so it
+     * must never be anything but base64 of a PNG. Each image is labelled for a
+     * screen reader by its position, since the program gives it no caption.
+     *
+     * @param {string[]} plots Base64 PNG images.
+     */
+    renderPlots(plots) {
+        if (!this.plots) {
+            return;
+        }
+
+        const valid = plots.filter((plot) => typeof plot === 'string' && /^[A-Za-z0-9+/]+={0,2}$/.test(plot));
+        this.plots.textContent = '';
+        this.plots.hidden = valid.length === 0;
+
+        valid.forEach((plot, index) => {
+            const figure = document.createElement('figure');
+            figure.className = 'saylorcode-plot';
+            const img = document.createElement('img');
+            img.src = `data:image/png;base64,${plot}`;
+            img.alt = '';
+            figure.appendChild(img);
+            this.plots.appendChild(figure);
+
+            getString('plotalt', 'mod_saylorcode', {number: index + 1, total: valid.length})
+                .then((text) => {
+                    img.alt = text;
+                    return text;
+                }).catch(Notification.exception);
+        });
     }
 
     /**

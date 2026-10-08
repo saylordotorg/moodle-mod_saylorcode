@@ -26,7 +26,7 @@ defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'mod_saylorcode';
 
-$plugin->version   = 2026100500;
+$plugin->version   = 2026100800;
 
 $plugin->requires  = 2024100700; // Moodle 4.5.
 $plugin->supported = [405, 405];
@@ -38,5 +38,5 @@ $plugin->dependencies = [
     // for the execution gate's get_denial(); this supersedes it. Against
     // anything older this plugin installs happily and then fatals on the first
     // execution, which is worse than refusing to install.
-    'local_saylorcode' => 2026100500,
+    'local_saylorcode' => 2026100800,
 ];

@@ -60,6 +60,7 @@ export const mount = (options = {}) => {
             <span data-region="save"></span>
             <span data-region="ran"></span>
             <div data-region="console"></div>
+            <div data-region="plots" hidden></div>
             <div data-region="tests"></div>
             <div data-region="verdict"></div>
             <div data-region="verdict-surface"></div>
