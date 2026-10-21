@@ -127,6 +127,9 @@ export class Workspace {
 
         this.code = Editor.create(this.editor, this.editorLabel(), this.languageId);
         this.lastSavedValue = this.code ? this.code.getValue() : '';
+        // A preview always opens on the starter code, so this is what its
+        // Reset puts back.
+        this.starterCode = this.lastSavedValue;
 
         this.applyStoredTheme();
         this.registerListeners();
@@ -484,10 +487,12 @@ export class Workspace {
             return;
         }
 
-        // Theme and the drawer are pure presentation, so they stay live in a
-        // preview. Everything else would reach a web service the viewer has no
-        // business calling.
-        if (this.preview && action !== 'theme' && action !== 'closedrawer') {
+        // A preview's viewer is staff with no attempt, so nothing that reaches
+        // a web service may run. What stays live is everything that happens in
+        // the page alone: theme and drawer, Download, and for a language the
+        // browser draws, Run and Reset, which only redraw the frame or put the
+        // starter code back.
+        if (this.preview && !this.worksInPreview(action)) {
             return;
         }
 
@@ -536,6 +541,19 @@ export class Workspace {
             default:
                 break;
         }
+    }
+
+    /**
+     * Whether a control can work in an author preview, without the server.
+     *
+     * @param {string} action The action name.
+     * @returns {boolean}
+     */
+    worksInPreview(action) {
+        if (['theme', 'closedrawer', 'download'].indexOf(action) !== -1) {
+            return true;
+        }
+        return this.browser && (action === 'run' || action === 'reset');
     }
 
     /**
@@ -748,6 +766,17 @@ export class Workspace {
      * @returns {Promise} Resolves once the code is saved.
      */
     renderPreview() {
+        // An author preview draws the page but keeps nothing: there is no
+        // attempt to save into.
+        if (this.preview) {
+            this.clearResults();
+            this.openResults();
+            this.drawPreview();
+            this.setStatus('ran');
+            this.stampRan();
+            return Promise.resolve(true);
+        }
+
         this.setBusy(true);
 
         try {
@@ -790,6 +819,22 @@ export class Workspace {
      * @returns {Promise} Resolves when the editor has been restored.
      */
     reset() {
+        // In an author preview the editor opened on the starter code and
+        // nothing was saved, so the starter is put back here, without asking
+        // the server for an attempt the viewer does not have.
+        if (this.preview) {
+            if (this.code) {
+                this.code.setValue(this.starterCode);
+            }
+            this.clearResults();
+            if (this.browser) {
+                this.drawPreview();
+            }
+            this.setStatus('idle');
+            this.root.classList.remove('saylorcode-open');
+            return Promise.resolve(true);
+        }
+
         this.setBusy(true);
 
         // Native promise for the same reason as execute(). This one mattered
