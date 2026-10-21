@@ -66,7 +66,8 @@
     * canattempt bool Whether the viewer may edit and run code.
     * allowdownload bool Whether the download control is offered.
     * nopermission string|null Message shown when the viewer may not attempt.
-    * preview bool Whether this is an author preview, where the controls do nothing.
+    * preview bool Whether this is an author preview. Only controls that need no server work there:
+      Download always, and Run and Reset for a language drawn in the browser.
     * showhelp bool Whether either hints or the solution are on offer.
     * allowhints bool Whether this activity has hints to give.
     * allowsolution bool Whether the reference solution may be shown.
@@ -308,7 +309,7 @@
 
     <div class="saylorcode-actions" role="group"
          aria-label="{{#str}}actionsheading, mod_saylorcode{{/str}}">
-        <button type="button" class="saylorcode-btn saylorcode-btn-primary" data-action="run"{{#preview}} disabled{{/preview}}>
+        <button type="button" class="saylorcode-btn saylorcode-btn-primary" data-action="run"{{#preview}}{{^isbrowser}} disabled{{/isbrowser}}{{/preview}}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none"
                  aria-hidden="true" focusable="false">
                 <polygon points="6 3 20 12 6 21 6 3"></polygon>
@@ -328,11 +329,11 @@
 
         <span class="saylorcode-actions-divider" aria-hidden="true"></span>
 
-        <button type="button" class="saylorcode-btn saylorcode-btn-ghost" data-action="reset"{{#preview}} disabled{{/preview}}>
+        <button type="button" class="saylorcode-btn saylorcode-btn-ghost" data-action="reset"{{#preview}}{{^isbrowser}} disabled{{/isbrowser}}{{/preview}}>
             {{#str}}reset, mod_saylorcode{{/str}}
         </button>
         {{#allowdownload}}
-        <button type="button" class="saylorcode-btn saylorcode-btn-ghost" data-action="download"{{#preview}} disabled{{/preview}}>
+        <button type="button" class="saylorcode-btn saylorcode-btn-ghost" data-action="download">
             {{#str}}download{{/str}}
         </button>
         {{/allowdownload}}
